@@ -2,7 +2,96 @@
 
 bool Logger::showDebug = false;
 bool Logger::runtimeStarted = false;
+Logger* Logger::instance_ = nullptr;
+std::mutex Logger::mutex_;
 
+// Construtor privado
+Logger::Logger() : usarArquivo_(false) {
+}
+
+// Destrutor
+Logger::~Logger() {
+    fecharArquivo();
+}
+
+// Método Singleton
+Logger& Logger::getInstance() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (instance_ == nullptr) {
+        instance_ = new Logger();
+    }
+    return *instance_;
+}
+
+void Logger::setArquivoLog(const std::string& caminho) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    // Fecha arquivo anterior se houver
+    if (arquivoLog_.is_open()) {
+        arquivoLog_.close();
+    }
+    
+    caminhoArquivo_ = caminho;
+    arquivoLog_.open(caminhoArquivo_, std::ios::app);
+    usarArquivo_ = arquivoLog_.is_open();
+    
+    if (usarArquivo_) {
+        arquivoLog_ << "\n========== Nova Sessão: " << getTimestamp() << " ==========\n";
+        arquivoLog_.flush();
+    }
+}
+
+void Logger::log(LogLevel level, const std::string& contexto, const std::string& mensagem) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    std::string logLine = "[" + getTimestamp() + "] [" + getLevelString(level) + "] " +
+                          "[" + contexto + "] " + mensagem;
+    
+    // Log em arquivo
+    if (usarArquivo_ && arquivoLog_.is_open()) {
+        arquivoLog_ << logLine << std::endl;
+        arquivoLog_.flush();
+    }
+    
+    // Log no console (apenas para INFO, WARNING, ERROR se não estiver em runtime)
+    if (!runtimeStarted && (level == LogLevel::INFO || level == LogLevel::WARNING || level == LogLevel::ERROR)) {
+        std::cout << logLine << std::endl;
+    }
+}
+
+void Logger::fecharArquivo() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    if (arquivoLog_.is_open()) {
+        arquivoLog_ << "========== Sessão Finalizada: " << getTimestamp() << " ==========\n\n";
+        arquivoLog_.close();
+    }
+    usarArquivo_ = false;
+}
+
+std::string Logger::getLevelString(LogLevel level) const {
+    switch (level) {
+        case LogLevel::STARTUP:  return "STARTUP";
+        case LogLevel::SHUTDOWN: return "SHUTDOWN";
+        case LogLevel::RUNTIME:  return "RUNTIME";
+        case LogLevel::DEBUG:    return "DEBUG";
+        case LogLevel::INFO:     return "INFO";
+        case LogLevel::WARNING:  return "WARNING";
+        case LogLevel::ERROR:    return "ERROR";
+        default:                 return "UNKNOWN";
+    }
+}
+
+std::string Logger::getTimestamp() const {
+    time_t now = time(nullptr);
+    tm* ltm = localtime(&now);
+    
+    char buffer[20];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
+    return std::string(buffer);
+}
+
+// Métodos estáticos originais (mantidos para compatibilidade)
 void Logger::setDebugMode(bool enabled) {
     showDebug = enabled;
 }
