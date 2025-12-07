@@ -1,5 +1,5 @@
 #include "usuario_service.hpp"
-#include "armazenamento_volatil.hpp"
+#include "../storage/armazenamento_volatil.hpp"
 #include <stdexcept>
 
 UsuarioService::UsuarioService() {

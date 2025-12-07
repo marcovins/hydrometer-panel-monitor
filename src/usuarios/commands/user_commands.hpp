@@ -2,7 +2,7 @@
 #define USER_COMMANDS_HPP
 
 #include "user_command.hpp"
-#include "usuario.hpp"
+#include "../domain/usuario.hpp"
 #include <map>
 #include <string>
 

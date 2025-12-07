@@ -1,7 +1,7 @@
 #ifndef USER_COMMAND_HPP
 #define USER_COMMAND_HPP
 
-#include "usuario_service.hpp"
+#include "../services/usuario_service.hpp"
 #include <memory>
 
 // Interface do padrão Command

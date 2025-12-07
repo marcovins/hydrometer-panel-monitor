@@ -4,7 +4,7 @@
 #include <csignal>
 #include <termios.h>
 #include <unistd.h>
-#include "src/modules/simulator.hpp"
+#include "src/simulator/simulator.hpp"
 #include "src/utils/logger.hpp"
 
 // Variável global para controlar finalização

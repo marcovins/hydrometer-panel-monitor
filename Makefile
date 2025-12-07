@@ -1,6 +1,7 @@
 # Makefile para o projeto Hydrometer Simulator
 # Autor: Marcos Belo
-# Data: 04/09/2025
+# Data: 07/12/2025
+# Versão: 2.0 - Estrutura Modular
 
 # Configurações do compilador
 CXX = g++
@@ -8,49 +9,86 @@ CXXFLAGS = -std=c++14 -Wall -Wextra -O2
 DEBUG_FLAGS = -std=c++14 -Wall -Wextra -g -DDEBUG
 INCLUDE_DIR = -I./src
 
-# Arquivos e diretórios
+# Bibliotecas
+CAIRO_LIBS = `pkg-config --cflags --libs cairo`
+SQLITE_LIBS = -lsqlite3
+
+# Arquivos principais
 TARGET = hidrometer_simulator
 TARGET_DEBUG = hidrometer_simulator_debug
 TARGET_TEST_USUARIOS = test_usuarios
+TARGET_TEST_USUARIOS_DB = test_usuarios_db
+TARGET_EXEMPLO_FACTORY = exemplo_factory
+
 MAIN_FILE = main.cpp
 TEST_USUARIOS_FILE = test_usuarios.cpp
+TEST_USUARIOS_DB_FILE = test_usuarios_db.cpp
+EXEMPLO_FACTORY_FILE = exemplo_factory.cpp
+
+# Diretórios de código fonte
 SRC_DIR = src
-CAIRO_LIBS = `pkg-config --cflags --libs cairo`
-HEADER_FILES = $(wildcard $(SRC_DIR)/modules/*.h) $(wildcard $(SRC_DIR)/utils/*.h)
-CPP_FILES = $(wildcard $(SRC_DIR)/modules/*.cpp) $(wildcard $(SRC_DIR)/utils/*.cpp)
-ALL_SOURCES = $(MAIN_FILE) $(CPP_FILES)
+SIMULATOR_DIR = $(SRC_DIR)/simulator
+USUARIOS_DIR = $(SRC_DIR)/usuarios
+UTILS_DIR = $(SRC_DIR)/utils
 
-# Arquivos para o teste de usuários
-USUARIO_SOURCES = src/modules/usuario.cpp \
-                  src/modules/armazenamento_volatil.cpp \
-                  src/modules/usuario_service.cpp \
-                  src/modules/user_commands.cpp \
-                  src/modules/command_invoker.cpp
+# Arquivos do simulador
+SIMULATOR_SOURCES = $(SIMULATOR_DIR)/simulator.cpp \
+                    $(SIMULATOR_DIR)/hidrometer.cpp \
+                    $(SIMULATOR_DIR)/pipe.cpp
 
-SOURCES = main.cpp src/modules/hidrometer.cpp src/modules/pipe.cpp src/modules/simulator.cpp src/utils/image.cpp src/utils/logger.cpp
+# Arquivos de utilitários
+UTILS_SOURCES = $(UTILS_DIR)/image.cpp \
+                $(UTILS_DIR)/logger.cpp
+
+# Arquivos do subsistema de usuários
+USUARIOS_DOMAIN = $(USUARIOS_DIR)/domain/usuario.cpp
+
+USUARIOS_STORAGE = $(USUARIOS_DIR)/storage/armazenamento_volatil.cpp
+
+USUARIOS_STORAGE_DB = $(USUARIOS_DIR)/storage/armazenamento_volatil.cpp \
+                      $(USUARIOS_DIR)/storage/armazenamento_sqlite.cpp
+
+USUARIOS_COMMANDS = $(USUARIOS_DIR)/commands/user_commands.cpp \
+                    $(USUARIOS_DIR)/commands/command_invoker.cpp
+
+USUARIOS_SERVICES = $(USUARIOS_DIR)/services/usuario_service.cpp
+
+# Combinações para compilação
+ALL_SIMULATOR_SOURCES = $(MAIN_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES)
+
+USUARIO_SOURCES = $(USUARIOS_DOMAIN) \
+                  $(USUARIOS_STORAGE) \
+                  $(USUARIOS_SERVICES) \
+                  $(USUARIOS_COMMANDS)
+
+USUARIO_DB_SOURCES = $(USUARIOS_DOMAIN) \
+                     $(USUARIOS_STORAGE_DB) \
+                     $(USUARIOS_SERVICES) \
+                     $(USUARIOS_COMMANDS)
 
 # Cores para output
 GREEN = \033[0;32m
 YELLOW = \033[0;33m
 RED = \033[0;31m
+BLUE = \033[0;34m
 NC = \033[0m # No Color
 
 # Regra padrão
 all: $(TARGET)
 
-# Compilação em modo release
-$(TARGET): $(ALL_SOURCES) $(HEADER_FILES)
-	@echo "$(GREEN)Compilando projeto em modo release...$(NC)"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET) $(ALL_SOURCES) -pthread $(CAIRO_LIBS)
-	@echo "$(GREEN)Compilação concluída com sucesso!$(NC)"
+# Compilação do simulador em modo release
+$(TARGET): $(ALL_SIMULATOR_SOURCES)
+	@echo "$(GREEN)Compilando simulador de hidrómetro (release)...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET) $(ALL_SIMULATOR_SOURCES) -pthread $(CAIRO_LIBS)
+	@echo "$(GREEN)✓ Compilação concluída com sucesso!$(NC)"
 
 # Compilação em modo debug
 debug: $(TARGET_DEBUG)
 
-$(TARGET_DEBUG): $(ALL_SOURCES) $(HEADER_FILES)
-	@echo "$(YELLOW)Compilando projeto em modo debug...$(NC)"
-	$(CXX) $(DEBUG_FLAGS) $(INCLUDE_DIR) -o $(TARGET_DEBUG) $(ALL_SOURCES) -pthread
-	@echo "$(YELLOW)Compilação debug concluída com sucesso!$(NC)"
+$(TARGET_DEBUG): $(ALL_SIMULATOR_SOURCES)
+	@echo "$(YELLOW)Compilando simulador (debug)...$(NC)"
+	$(CXX) $(DEBUG_FLAGS) $(INCLUDE_DIR) -o $(TARGET_DEBUG) $(ALL_SIMULATOR_SOURCES) -pthread
+	@echo "$(YELLOW)✓ Compilação debug concluída!$(NC)"
 
 # Executar o programa
 run: $(TARGET)
@@ -81,32 +119,85 @@ check: $(MAIN_FILE) $(HEADER_FILES)
 # Limpar arquivos gerados
 clean:
 	@echo "$(RED)Limpando arquivos compilados...$(NC)"
-	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS)
-	@echo "$(RED)Limpeza concluída!$(NC)"
+	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS) $(TARGET_TEST_USUARIOS_DB) $(TARGET_EXEMPLO_FACTORY)
+	rm -f *.db  # Remove bancos de dados de teste
+	@echo "$(RED)✓ Limpeza concluída!$(NC)"
 
-# Compilar e executar teste do subsistema de usuários
+# Compilar e executar teste do subsistema de usuários (volátil)
 test-usuarios: $(TARGET_TEST_USUARIOS)
 	@echo "$(GREEN)Executando teste do subsistema de usuários...$(NC)"
 	@echo "$(GREEN)================================$(NC)"
 	./$(TARGET_TEST_USUARIOS)
 	@echo "$(GREEN)================================$(NC)"
 
-# Compilação do teste de usuários
+# Compilação do teste de usuários (volátil)
 $(TARGET_TEST_USUARIOS): $(TEST_USUARIOS_FILE) $(USUARIO_SOURCES)
-	@echo "$(GREEN)Compilando teste do subsistema de usuários...$(NC)"
+	@echo "$(GREEN)Compilando teste de usuários (volátil)...$(NC)"
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_USUARIOS) $(TEST_USUARIOS_FILE) $(USUARIO_SOURCES)
-	@echo "$(GREEN)Compilação concluída com sucesso!$(NC)"
+	@echo "$(GREEN)✓ Compilação concluída!$(NC)"
+
+# Compilar e executar teste com banco de dados
+test-usuarios-db: $(TARGET_TEST_USUARIOS_DB)
+	@echo "$(YELLOW)Executando teste com banco de dados...$(NC)"
+	@echo "$(YELLOW)================================$(NC)"
+	./$(TARGET_TEST_USUARIOS_DB) ambos
+	@echo "$(YELLOW)================================$(NC)"
+
+# Compilação do teste com banco de dados
+$(TARGET_TEST_USUARIOS_DB): $(TEST_USUARIOS_DB_FILE) $(USUARIO_DB_SOURCES)
+	@echo "$(YELLOW)Compilando teste com SQLite...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_USUARIOS_DB) $(TEST_USUARIOS_DB_FILE) $(USUARIO_DB_SOURCES) $(SQLITE_LIBS)
+	@echo "$(YELLOW)✓ Compilação concluída!$(NC)"
+
+# Teste rápido apenas com SQLite
+test-sqlite: $(TARGET_TEST_USUARIOS_DB)
+	@echo "$(YELLOW)Executando teste com SQLite...$(NC)"
+	@echo "$(YELLOW)================================$(NC)"
+	./$(TARGET_TEST_USUARIOS_DB) sqlite
+	@echo "$(YELLOW)================================$(NC)"
+
+# Teste rápido apenas com Volátil
+test-volatil: $(TARGET_TEST_USUARIOS_DB)
+	@echo "$(GREEN)Executando teste com Volátil...$(NC)"
+	@echo "$(GREEN)================================$(NC)"
+	./$(TARGET_TEST_USUARIOS_DB) volatil
+	@echo "$(GREEN)================================$(NC)"
+
+# Compilar exemplo da Factory
+exemplo-factory: $(TARGET_EXEMPLO_FACTORY)
+	@echo "$(BLUE)Executando exemplo da Factory...$(NC)"
+	@echo "$(BLUE)================================$(NC)"
+	./$(TARGET_EXEMPLO_FACTORY)
+	@echo "$(BLUE)================================$(NC)"
+
+# Compilação do exemplo Factory
+$(TARGET_EXEMPLO_FACTORY): $(EXEMPLO_FACTORY_FILE) $(USUARIO_DB_SOURCES)
+	@echo "$(BLUE)Compilando exemplo da Factory...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_EXEMPLO_FACTORY) $(EXEMPLO_FACTORY_FILE) $(USUARIO_DB_SOURCES) $(SQLITE_LIBS)
+	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
 
 # Mostrar informações do projeto
 info:
 	@echo "$(GREEN)========== INFORMAÇÕES DO PROJETO ===========$(NC)"
-	@echo "$(YELLOW)Projeto:$(NC) Hydrometer Simulator"
-	@echo "$(YELLOW)Arquivo principal:$(NC) $(MAIN_FILE)"
-	@echo "$(YELLOW)Executável:$(NC) $(TARGET)"
-	@echo "$(YELLOW)Compilador:$(NC) $(CXX)"
-	@echo "$(YELLOW)Flags de compilação:$(NC) $(CXXFLAGS)"
-	@echo "$(YELLOW)Headers encontrados:$(NC)"
-	@for header in $(HEADER_FILES); do echo "  - $$header"; done
+	@echo "$(YELLOW)Projeto:$(NC) Hydrometer Panel Monitor (SSMH)"
+	@echo "$(YELLOW)Versão:$(NC) 2.0 - Estrutura Modular"
+	@echo "$(YELLOW)Data:$(NC) 07/12/2025"
+	@echo "$(YELLOW)Compilador:$(NC) $(CXX) $(CXXFLAGS)"
+	@echo ""
+	@echo "$(BLUE)Estrutura do Projeto:$(NC)"
+	@echo "  src/simulator/      - Simulador de hidrômetro"
+	@echo "  src/usuarios/       - Subsistema de usuários"
+	@echo "    ├── domain/       - Entidades de domínio"
+	@echo "    ├── storage/      - Estratégias de persistência"
+	@echo "    ├── commands/     - Padrão Command"
+	@echo "    └── services/     - Serviços e lógica de negócio"
+	@echo "  src/utils/          - Utilitários (Logger, Image)"
+	@echo ""
+	@echo "$(GREEN)Padrões de Projeto Implementados:$(NC)"
+	@echo "  • Strategy  - Persistência (Volátil/SQLite)"
+	@echo "  • Command   - Operações com undo/redo"
+	@echo "  • Factory   - Criação de serviços"
+	@echo "  • Singleton - Logger do sistema"
 	@echo "$(GREEN)==============================================$(NC)"
 
 # Instalar dependências (se necessário no futuro)
@@ -128,23 +219,34 @@ dist: clean
 # Ajuda
 help:
 	@echo "$(GREEN)========== COMANDOS DISPONÍVEIS ===========$(NC)"
-	@echo "$(YELLOW)make$(NC)           - Compila o projeto (modo release)"
-	@echo "$(YELLOW)make debug$(NC)     - Compila o projeto (modo debug)"
-	@echo "$(YELLOW)make run$(NC)       - Executa o programa"
-	@echo "$(YELLOW)make run-debug$(NC) - Executa o programa em modo debug"
-	@echo "$(YELLOW)make build-run$(NC) - Limpa, compila e executa"
-	@echo "$(YELLOW)make build-run-debug$(NC) - Limpa, compila e executa (debug)"
-	@echo "$(YELLOW)make test-usuarios$(NC) - Compila e executa teste do subsistema de usuarios"
-	@echo "$(YELLOW)make check$(NC)     - Verifica a sintaxe do código"
-	@echo "$(YELLOW)make clean$(NC)     - Remove arquivos compilados"
-	@echo "$(YELLOW)make info$(NC)      - Mostra informações do projeto"
-	@echo "$(YELLOW)make install-deps$(NC) - Verifica dependências"
-	@echo "$(YELLOW)make dist$(NC)      - Cria arquivo de distribuição"
-	@echo "$(YELLOW)make help$(NC)      - Mostra esta ajuda"
+	@echo ""
+	@echo "$(BLUE)Simulador de Hidrômetro:$(NC)"
+	@echo "  $(YELLOW)make$(NC) ou $(YELLOW)make all$(NC)    - Compila o simulador (release)"
+	@echo "  $(YELLOW)make debug$(NC)           - Compila em modo debug"
+	@echo "  $(YELLOW)make run$(NC)             - Executa o simulador"
+	@echo "  $(YELLOW)make run-debug$(NC)       - Executa em modo debug"
+	@echo "  $(YELLOW)make build-run$(NC)       - Limpa, compila e executa"
+	@echo ""
+	@echo "$(BLUE)Subsistema de Usuários:$(NC)"
+	@echo "  $(YELLOW)make test-usuarios$(NC)    - Teste básico (memória volátil)"
+	@echo "  $(YELLOW)make test-usuarios-db$(NC) - Teste completo (volátil + SQLite)"
+	@echo "  $(YELLOW)make test-sqlite$(NC)      - Teste apenas com SQLite"
+	@echo "  $(YELLOW)make test-volatil$(NC)     - Teste apenas com memória"
+	@echo "  $(YELLOW)make exemplo-factory$(NC)  - Exemplo de uso da Factory"
+	@echo ""
+	@echo "$(BLUE)Utilitários:$(NC)"
+	@echo "  $(YELLOW)make clean$(NC)            - Remove arquivos compilados e bancos de teste"
+	@echo "  $(YELLOW)make info$(NC)             - Mostra informações do projeto"
+	@echo "  $(YELLOW)make install-deps$(NC)     - Verifica dependências"
+	@echo "  $(YELLOW)make help$(NC)             - Mostra esta ajuda"
+	@echo ""
+	@echo "$(GREEN)==========================================$(NC)"
+	@echo "$(YELLOW)Dica:$(NC) Use 'make info' para ver a estrutura modular do projeto"
 	@echo "$(GREEN)==========================================$(NC)"
 
 # Evitar conflitos com arquivos de mesmo nome
-.PHONY: all debug run run-debug build-run build-run-debug check clean info install-deps dist help test-usuarios
+.PHONY: all debug run run-debug build-run build-run-debug clean info install-deps help \
+        test-usuarios test-usuarios-db test-sqlite test-volatil exemplo-factory
 
 # Detectar mudanças nos headers
 $(MAIN_FILE): $(HEADER_FILES)

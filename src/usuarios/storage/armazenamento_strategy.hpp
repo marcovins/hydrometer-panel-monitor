@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include <map>
-#include "usuario.hpp"
+#include "../domain/usuario.hpp"
 
 // Interface Strategy para persistência de dados
 class ArmazenamentoStrategy {

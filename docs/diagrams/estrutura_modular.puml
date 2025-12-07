@@ -1,0 +1,186 @@
+@startuml Estrutura_Modular_SSMH
+
+' Configurações
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam shadowing false
+
+' Título
+title Estrutura Modular do Projeto SSMH\nVersão 2.0
+
+' Módulo Simulator
+package "simulator/" <<Folder>> #LightBlue {
+    class Simulator {
+        +run()
+        +stop()
+    }
+    
+    class Hidrometer {
+        +getReading()
+        +updateFlow()
+    }
+    
+    class Pipe {
+        +getFlowIn()
+        +getFlowOut()
+    }
+}
+
+' Módulo Usuarios
+package "usuarios/" <<Folder>> #LightGreen {
+    
+    package "domain/" <<Folder>> #E8F5E9 {
+        class Usuario {
+            -id: int
+            -nome: string
+            -email: string
+            -tipoPerfil: TipoPerfil
+        }
+        
+        class Fatura {
+            -id: int
+            -valor: double
+            -status: string
+        }
+        
+        enum TipoPerfil {
+            ADMIN
+            LEITOR
+        }
+    }
+    
+    package "storage/" <<Folder>> #E3F2FD {
+        interface ArmazenamentoStrategy <<interface>> {
+            +salvar(Usuario)
+            +buscar(id): Usuario
+            +atualizar(id, dados)
+            +deletar(id)
+        }
+        
+        class ArmazenamentoVolatil {
+            -usuarios: map
+            +salvar()
+            +buscar()
+        }
+        
+        class ArmazenamentoSqlite {
+            -db: sqlite3*
+            +salvar()
+            +buscar()
+        }
+    }
+    
+    package "commands/" <<Folder>> #FFF3E0 {
+        interface UserCommand <<interface>> {
+            +execute()
+            +undo()
+        }
+        
+        class CriarUsuarioCommand
+        class AtualizarUsuarioCommand
+        class DeletarUsuarioCommand
+        class VincularHidrometroCommand
+        
+        class CommandInvoker {
+            -historico: Stack
+            +executarComando()
+            +desfazer()
+            +refazer()
+        }
+    }
+    
+    package "services/" <<Folder>> #F3E5F5 {
+        class UsuarioService {
+            -strategy: ArmazenamentoStrategy
+            +criarUsuario()
+            +buscarUsuario()
+            +atualizarUsuario()
+        }
+        
+        class UsuarioServiceFactory {
+            {static} +criar(tipo): UsuarioService
+            {static} +criarPorNome(nome): UsuarioService
+        }
+    }
+}
+
+' Módulo Utils
+package "utils/" <<Folder>> #FFF9C4 {
+    class Logger <<Singleton>> {
+        {static} -instance: Logger
+        {static} +getInstance()
+        +log(message)
+    }
+    
+    class Image {
+        +processOCR()
+        +saveImage()
+    }
+}
+
+' Módulo Core (Futuro)
+package "core/" <<Folder>> #ECEFF1 {
+    note "Componentes\ncentrais\ncompartilhados\n(futuro)" as N1
+}
+
+' Relacionamentos - Storage
+ArmazenamentoStrategy <|.. ArmazenamentoVolatil
+ArmazenamentoStrategy <|.. ArmazenamentoSqlite
+ArmazenamentoStrategy ..> Usuario : persiste
+
+' Relacionamentos - Services
+UsuarioService --> ArmazenamentoStrategy : usa
+UsuarioServiceFactory ..> UsuarioService : cria
+UsuarioServiceFactory ..> ArmazenamentoVolatil : instancia
+UsuarioServiceFactory ..> ArmazenamentoSqlite : instancia
+
+' Relacionamentos - Commands
+UserCommand <|.. CriarUsuarioCommand
+UserCommand <|.. AtualizarUsuarioCommand
+UserCommand <|.. DeletarUsuarioCommand
+UserCommand <|.. VincularHidrometroCommand
+CommandInvoker o--> UserCommand : gerencia
+UserCommand ..> UsuarioService : executa em
+
+' Relacionamentos - Domain
+Usuario --> TipoPerfil
+
+' Relacionamentos - Simulator
+Simulator --> Hidrometer : gerencia
+Simulator --> Pipe : monitora
+Simulator ..> Logger : usa
+
+' Relacionamentos - Utils
+UsuarioService ..> Logger : usa
+Simulator ..> Logger : usa
+
+' Notas
+note right of usuarios
+  **Padrões Aplicados:**
+  • Strategy (Storage)
+  • Command (Commands)
+  • Factory (Services)
+  • Repository (Storage)
+end note
+
+note right of utils
+  **Utilitários Globais:**
+  Usados por todos
+  os módulos
+end note
+
+note bottom of simulator
+  **Módulo Independente:**
+  Pode ser testado
+  separadamente
+end note
+
+' Legenda
+legend bottom
+  |<#LightBlue> Simulator | Simulação de Hidrômetro |
+  |<#LightGreen> Usuarios | Gestão de Usuários (CRUD) |
+  |<#FFF9C4> Utils | Utilitários Compartilhados |
+  |<#ECEFF1> Core | Componentes Centrais (Futuro) |
+endlegend
+
+@enduml

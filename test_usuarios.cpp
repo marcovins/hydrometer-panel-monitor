@@ -1,10 +1,10 @@
 #include <iostream>
 #include <iomanip>
-#include "src/modules/usuario.hpp"
-#include "src/modules/usuario_service.hpp"
-#include "src/modules/armazenamento_volatil.hpp"
-#include "src/modules/user_commands.hpp"
-#include "src/modules/command_invoker.hpp"
+#include "src/usuarios/domain/usuario.hpp"
+#include "src/usuarios/services/usuario_service.hpp"
+#include "src/usuarios/storage/armazenamento_volatil.hpp"
+#include "src/usuarios/commands/user_commands.hpp"
+#include "src/usuarios/commands/command_invoker.hpp"
 
 void imprimirUsuario(const Usuario& user) {
     std::cout << "  ID: " << user.getId() << std::endl;

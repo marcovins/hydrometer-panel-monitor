@@ -1,8 +1,8 @@
 #ifndef USUARIO_SERVICE_HPP
 #define USUARIO_SERVICE_HPP
 
-#include "armazenamento_strategy.hpp"
-#include "usuario.hpp"
+#include "../storage/armazenamento_strategy.hpp"
+#include "../domain/usuario.hpp"
 #include <memory>
 #include <string>
 #include <map>
