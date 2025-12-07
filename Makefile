@@ -5,8 +5,8 @@
 
 # Configurações do compilador
 CXX = g++
-CXXFLAGS = -std=c++14 -Wall -Wextra -O2
-DEBUG_FLAGS = -std=c++14 -Wall -Wextra -g -DDEBUG
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2
+DEBUG_FLAGS = -std=c++17 -Wall -Wextra -g -DDEBUG
 INCLUDE_DIR = -I./src
 
 # Bibliotecas
@@ -19,11 +19,15 @@ TARGET_DEBUG = hidrometer_simulator_debug
 TARGET_TEST_USUARIOS = test_usuarios
 TARGET_TEST_USUARIOS_DB = test_usuarios_db
 TARGET_EXEMPLO_FACTORY = exemplo_factory
+TARGET_TEST_MULTITHREAD = test_multithread_hidrometros
+TARGET_DEMO_MULTITHREAD = demo_multithread
 
 MAIN_FILE = main.cpp
 TEST_USUARIOS_FILE = test_usuarios.cpp
 TEST_USUARIOS_DB_FILE = test_usuarios_db.cpp
 EXEMPLO_FACTORY_FILE = exemplo_factory.cpp
+TEST_MULTITHREAD_FILE = test_multithread_hidrometros.cpp
+DEMO_MULTITHREAD_FILE = demo_multithread.cpp
 
 # Diretórios de código fonte
 SRC_DIR = src
@@ -34,7 +38,8 @@ UTILS_DIR = $(SRC_DIR)/utils
 # Arquivos do simulador
 SIMULATOR_SOURCES = $(SIMULATOR_DIR)/simulator.cpp \
                     $(SIMULATOR_DIR)/hidrometer.cpp \
-                    $(SIMULATOR_DIR)/pipe.cpp
+                    $(SIMULATOR_DIR)/pipe.cpp \
+                    $(SIMULATOR_DIR)/hidrometer_manager.cpp
 
 # Arquivos de utilitários
 UTILS_SOURCES = $(UTILS_DIR)/image.cpp \
@@ -119,7 +124,7 @@ check: $(MAIN_FILE) $(HEADER_FILES)
 # Limpar arquivos gerados
 clean:
 	@echo "$(RED)Limpando arquivos compilados...$(NC)"
-	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS) $(TARGET_TEST_USUARIOS_DB) $(TARGET_EXEMPLO_FACTORY)
+	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS) $(TARGET_TEST_USUARIOS_DB) $(TARGET_EXEMPLO_FACTORY) $(TARGET_TEST_MULTITHREAD) $(TARGET_DEMO_MULTITHREAD)
 	rm -f *.db  # Remove bancos de dados de teste
 	@echo "$(RED)✓ Limpeza concluída!$(NC)"
 
@@ -175,6 +180,32 @@ $(TARGET_EXEMPLO_FACTORY): $(EXEMPLO_FACTORY_FILE) $(USUARIO_DB_SOURCES)
 	@echo "$(BLUE)Compilando exemplo da Factory...$(NC)"
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_EXEMPLO_FACTORY) $(EXEMPLO_FACTORY_FILE) $(USUARIO_DB_SOURCES) $(SQLITE_LIBS)
 	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
+
+# Compilar e executar teste multithread de hidrometros
+test-multithread: $(TARGET_TEST_MULTITHREAD)
+	@echo "$(BLUE)Executando teste multithread de hidrometros...$(NC)"
+	@echo "$(BLUE)================================$(NC)"
+	./$(TARGET_TEST_MULTITHREAD)
+	@echo "$(BLUE)================================$(NC)"
+
+# Compilação do teste multithread
+$(TARGET_TEST_MULTITHREAD): $(TEST_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) $(USUARIO_SOURCES)
+	@echo "$(BLUE)Compilando teste multithread...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_MULTITHREAD) $(TEST_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) $(USUARIO_SOURCES) -pthread $(CAIRO_LIBS)
+	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
+
+# Compilar e executar demo multithread
+demo-multithread: $(TARGET_DEMO_MULTITHREAD)
+	@echo "$(GREEN)Executando demonstracao multithread...$(NC)"
+	@echo "$(GREEN)================================$(NC)"
+	./$(TARGET_DEMO_MULTITHREAD)
+	@echo "$(GREEN)================================$(NC)"
+
+# Compilação da demo multithread
+$(TARGET_DEMO_MULTITHREAD): $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES)
+	@echo "$(GREEN)Compilando demonstracao multithread...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_MULTITHREAD) $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) -pthread $(CAIRO_LIBS)
+	@echo "$(GREEN)✓ Compilação concluída!$(NC)"
 
 # Mostrar informações do projeto
 info:
@@ -234,6 +265,10 @@ help:
 	@echo "  $(YELLOW)make test-volatil$(NC)     - Teste apenas com memória"
 	@echo "  $(YELLOW)make exemplo-factory$(NC)  - Exemplo de uso da Factory"
 	@echo ""
+	@echo "$(BLUE)Teste Multithread:$(NC)"
+	@echo "  $(YELLOW)make test-multithread$(NC)  - Teste interativo de múltiplos hidrometros"
+	@echo "  $(YELLOW)make demo-multithread$(NC)  - Demonstração automatica (recomendado)"
+	@echo ""
 	@echo "$(BLUE)Utilitários:$(NC)"
 	@echo "  $(YELLOW)make clean$(NC)            - Remove arquivos compilados e bancos de teste"
 	@echo "  $(YELLOW)make info$(NC)             - Mostra informações do projeto"
@@ -246,7 +281,7 @@ help:
 
 # Evitar conflitos com arquivos de mesmo nome
 .PHONY: all debug run run-debug build-run build-run-debug clean info install-deps help \
-        test-usuarios test-usuarios-db test-sqlite test-volatil exemplo-factory
+        test-usuarios test-usuarios-db test-sqlite test-volatil exemplo-factory test-multithread demo-multithread
 
 # Detectar mudanças nos headers
 $(MAIN_FILE): $(HEADER_FILES)

@@ -2,6 +2,7 @@
 #include <thread>
 #include <chrono>
 #include <csignal>
+#include <atomic>
 #include <termios.h>
 #include <unistd.h>
 #include "src/simulator/simulator.hpp"
@@ -9,12 +10,23 @@
 
 // Variável global para controlar finalização
 Simulator* globalSimulator = nullptr;
+static std::atomic<bool> shutdownInProgress(false);
 
 // Handler para Ctrl+C
 void signalHandler(int signal) {
-    if (signal == SIGINT && globalSimulator != nullptr) {
+    if (signal == SIGINT) {
+        // Evita múltiplas execuções do handler
+        bool expected = false;
+        if (!shutdownInProgress.compare_exchange_strong(expected, true)) {
+            // Já está finalizando, ignora
+            return;
+        }
+        
         Logger::log(LogLevel::SHUTDOWN, "\n[INFO] Ctrl+C detectado - Finalizando...");
-        globalSimulator->stop();
+        
+        if (globalSimulator != nullptr) {
+            globalSimulator->stop();
+        }
         
         // Restaura terminal
         struct termios term;

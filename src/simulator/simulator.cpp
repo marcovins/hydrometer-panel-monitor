@@ -119,8 +119,13 @@
     }
 
     void Simulator::stop() {
-
-        running.store(false);
+        // Evita múltiplas chamadas
+        bool expected = true;
+        if (!running.compare_exchange_strong(expected, false)) {
+            // Já está parando ou já parou
+            return;
+        }
+        
         for (size_t i = 0; i < MAX_SIM; i++)
         {
             this->hidrometer[i].deactivate();
