@@ -22,6 +22,7 @@ TARGET_EXEMPLO_FACTORY = exemplo_factory
 TARGET_TEST_MULTITHREAD = test_multithread_hidrometros
 TARGET_DEMO_MULTITHREAD = demo_multithread
 TARGET_TEST_MONITORAMENTO = test_monitoramento
+TARGET_TEST_ALERTAS = test_alertas
 
 MAIN_FILE = main.cpp
 TEST_USUARIOS_FILE = test_usuarios.cpp
@@ -30,6 +31,7 @@ EXEMPLO_FACTORY_FILE = exemplo_factory.cpp
 TEST_MULTITHREAD_FILE = test_multithread_hidrometros.cpp
 DEMO_MULTITHREAD_FILE = demo_multithread.cpp
 TEST_MONITORAMENTO_FILE = test_monitoramento.cpp
+TEST_ALERTAS_FILE = test_alertas.cpp
 
 # Diretórios de código fonte
 SRC_DIR = src
@@ -65,6 +67,33 @@ MONITORAMENTO_SOURCES = $(MONITORAMENTO_DOMAIN) \
                         $(MONITORAMENTO_ADAPTER) \
                         $(MONITORAMENTO_STORAGE) \
                         $(MONITORAMENTO_SERVICES)
+
+# Arquivos do subsistema de alertas
+ALERTAS_DIR = $(SRC_DIR)/alertas
+
+ALERTAS_DOMAIN = $(ALERTAS_DIR)/domain/regra_alerta.cpp \
+                 $(ALERTAS_DIR)/domain/alerta_ativo.cpp
+
+ALERTAS_STRATEGIES = $(ALERTAS_DIR)/strategies/limite_diario_strategy.cpp \
+                     $(ALERTAS_DIR)/strategies/media_movel_strategy.cpp \
+                     $(ALERTAS_DIR)/strategies/deteccao_vazamento_strategy.cpp
+
+ALERTAS_NOTIFICATIONS = $(ALERTAS_DIR)/notifications/notificacao_console_log.cpp \
+                        $(ALERTAS_DIR)/notifications/notificacao_windows_popup.cpp \
+                        $(ALERTAS_DIR)/notifications/notificacao_email.cpp
+
+ALERTAS_OBSERVERS = $(ALERTAS_DIR)/observers/painel_observer.cpp \
+                    $(ALERTAS_DIR)/observers/logger_observer.cpp \
+                    $(ALERTAS_DIR)/observers/notificacao_observer.cpp
+
+ALERTAS_SERVICES = $(ALERTAS_DIR)/services/alerta_service.cpp \
+                   $(ALERTAS_DIR)/services/alerta_service_factory.cpp
+
+ALERTAS_SOURCES = $(ALERTAS_DOMAIN) \
+                  $(ALERTAS_STRATEGIES) \
+                  $(ALERTAS_NOTIFICATIONS) \
+                  $(ALERTAS_OBSERVERS) \
+                  $(ALERTAS_SERVICES)
 
 # Arquivos do subsistema de usuários
 USUARIOS_DOMAIN = $(USUARIOS_DIR)/domain/usuario.cpp
@@ -145,7 +174,7 @@ check: $(MAIN_FILE) $(HEADER_FILES)
 # Limpar arquivos gerados
 clean:
 	@echo "$(RED)Limpando arquivos compilados...$(NC)"
-	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS) $(TARGET_TEST_USUARIOS_DB) $(TARGET_EXEMPLO_FACTORY) $(TARGET_TEST_MULTITHREAD) $(TARGET_DEMO_MULTITHREAD) $(TARGET_TEST_MONITORAMENTO)
+	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS) $(TARGET_TEST_USUARIOS_DB) $(TARGET_EXEMPLO_FACTORY) $(TARGET_TEST_MULTITHREAD) $(TARGET_DEMO_MULTITHREAD) $(TARGET_TEST_MONITORAMENTO) $(TARGET_TEST_ALERTAS)
 	rm -f *.db  # Remove bancos de dados de teste
 	@echo "$(RED)✓ Limpeza concluída!$(NC)"
 
@@ -241,6 +270,19 @@ $(TARGET_TEST_MONITORAMENTO): $(TEST_MONITORAMENTO_FILE) $(MONITORAMENTO_SOURCES
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_MONITORAMENTO) $(TEST_MONITORAMENTO_FILE) $(MONITORAMENTO_SOURCES) $(UTILS_DIR)/logger.cpp
 	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
 
+# Compilar e executar teste do subsistema de alertas
+test-alertas: $(TARGET_TEST_ALERTAS)
+	@echo "$(GREEN)Executando teste do subsistema de alertas...$(NC)"
+	@echo "$(GREEN)================================$(NC)"
+	./$(TARGET_TEST_ALERTAS)
+	@echo "$(GREEN)================================$(NC)"
+
+# Compilação do teste de alertas
+$(TARGET_TEST_ALERTAS): $(TEST_ALERTAS_FILE) $(ALERTAS_SOURCES) $(UTILS_SOURCES)
+	@echo "$(GREEN)Compilando teste de alertas...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_ALERTAS) $(TEST_ALERTAS_FILE) $(ALERTAS_SOURCES) $(UTILS_DIR)/logger.cpp
+	@echo "$(GREEN)✓ Compilação concluída!$(NC)"
+
 # Mostrar informações do projeto
 info:
 	@echo "$(GREEN)========== INFORMAÇÕES DO PROJETO ===========$(NC)"
@@ -262,13 +304,22 @@ info:
 	@echo "    ├── adapter/       - Padrão Adapter (OCR)"
 	@echo "    ├── storage/       - DAO de leituras"
 	@echo "    └── services/      - MonitoramentoService"
+	@echo "  src/alertas/         - Subsistema de alertas"
+	@echo "    ├── domain/        - RegraAlerta e AlertaAtivo"
+	@echo "    ├── strategies/    - Estratégias de análise"
+	@echo "    ├── notifications/ - Estratégias de notificação"
+	@echo "    ├── observers/     - Padrão Observer"
+	@echo "    └── services/      - AlertaService e Factory"
 	@echo "  src/utils/           - Utilitários (Logger, Image)"
 	@echo ""
 	@echo "$(GREEN)Padrões de Projeto Implementados:$(NC)"
 	@echo "  • Strategy  - Persistência (Volátil/SQLite)"
+	@echo "  • Strategy  - Análise de Consumo (3 tipos)"
+	@echo "  • Strategy  - Notificações (3 canais)"
 	@echo "  • Command   - Operações com undo/redo"
 	@echo "  • Composite - Agregação de consumo"
 	@echo "  • Adapter   - Processamento OCR"
+	@echo "  • Observer  - Notificação de alertas"
 	@echo "  • Factory   - Criação de serviços"
 	@echo "  • Singleton - Logger do sistema"
 	@echo "$(GREEN)==============================================$(NC)"
@@ -314,6 +365,9 @@ help:
 	@echo "$(BLUE)Subsistema de Monitoramento:$(NC)"
 	@echo "  $(YELLOW)make test-monitoramento$(NC) - Teste do subsistema de monitoramento"
 	@echo ""
+	@echo "$(BLUE)Subsistema de Alertas:$(NC)"
+	@echo "  $(YELLOW)make test-alertas$(NC)       - Teste completo do subsistema de alertas"
+	@echo ""
 	@echo "$(BLUE)Utilitários:$(NC)"
 	@echo "  $(YELLOW)make clean$(NC)            - Remove arquivos compilados e bancos de teste"
 	@echo "  $(YELLOW)make info$(NC)             - Mostra informações do projeto"
@@ -326,7 +380,7 @@ help:
 
 # Evitar conflitos com arquivos de mesmo nome
 .PHONY: all debug run run-debug build-run build-run-debug clean info install-deps help \
-        test-usuarios test-usuarios-db test-sqlite test-volatil exemplo-factory test-multithread demo-multithread test-monitoramento
+        test-usuarios test-usuarios-db test-sqlite test-volatil exemplo-factory test-multithread demo-multithread test-monitoramento test-alertas
 
 # Detectar mudanças nos headers
 $(MAIN_FILE): $(HEADER_FILES)
