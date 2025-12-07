@@ -11,12 +11,21 @@ INCLUDE_DIR = -I./src
 # Arquivos e diretórios
 TARGET = hidrometer_simulator
 TARGET_DEBUG = hidrometer_simulator_debug
+TARGET_TEST_USUARIOS = test_usuarios
 MAIN_FILE = main.cpp
+TEST_USUARIOS_FILE = test_usuarios.cpp
 SRC_DIR = src
 CAIRO_LIBS = `pkg-config --cflags --libs cairo`
 HEADER_FILES = $(wildcard $(SRC_DIR)/modules/*.h) $(wildcard $(SRC_DIR)/utils/*.h)
 CPP_FILES = $(wildcard $(SRC_DIR)/modules/*.cpp) $(wildcard $(SRC_DIR)/utils/*.cpp)
 ALL_SOURCES = $(MAIN_FILE) $(CPP_FILES)
+
+# Arquivos para o teste de usuários
+USUARIO_SOURCES = src/modules/usuario.cpp \
+                  src/modules/armazenamento_volatil.cpp \
+                  src/modules/usuario_service.cpp \
+                  src/modules/user_commands.cpp \
+                  src/modules/command_invoker.cpp
 
 SOURCES = main.cpp src/modules/hidrometer.cpp src/modules/pipe.cpp src/modules/simulator.cpp src/utils/image.cpp src/utils/logger.cpp
 
@@ -72,8 +81,21 @@ check: $(MAIN_FILE) $(HEADER_FILES)
 # Limpar arquivos gerados
 clean:
 	@echo "$(RED)Limpando arquivos compilados...$(NC)"
-	rm -f $(TARGET) $(TARGET_DEBUG)
+	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS)
 	@echo "$(RED)Limpeza concluída!$(NC)"
+
+# Compilar e executar teste do subsistema de usuários
+test-usuarios: $(TARGET_TEST_USUARIOS)
+	@echo "$(GREEN)Executando teste do subsistema de usuários...$(NC)"
+	@echo "$(GREEN)================================$(NC)"
+	./$(TARGET_TEST_USUARIOS)
+	@echo "$(GREEN)================================$(NC)"
+
+# Compilação do teste de usuários
+$(TARGET_TEST_USUARIOS): $(TEST_USUARIOS_FILE) $(USUARIO_SOURCES)
+	@echo "$(GREEN)Compilando teste do subsistema de usuários...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_USUARIOS) $(TEST_USUARIOS_FILE) $(USUARIO_SOURCES)
+	@echo "$(GREEN)Compilação concluída com sucesso!$(NC)"
 
 # Mostrar informações do projeto
 info:
@@ -112,6 +134,7 @@ help:
 	@echo "$(YELLOW)make run-debug$(NC) - Executa o programa em modo debug"
 	@echo "$(YELLOW)make build-run$(NC) - Limpa, compila e executa"
 	@echo "$(YELLOW)make build-run-debug$(NC) - Limpa, compila e executa (debug)"
+	@echo "$(YELLOW)make test-usuarios$(NC) - Compila e executa teste do subsistema de usuarios"
 	@echo "$(YELLOW)make check$(NC)     - Verifica a sintaxe do código"
 	@echo "$(YELLOW)make clean$(NC)     - Remove arquivos compilados"
 	@echo "$(YELLOW)make info$(NC)      - Mostra informações do projeto"
@@ -121,7 +144,7 @@ help:
 	@echo "$(GREEN)==========================================$(NC)"
 
 # Evitar conflitos com arquivos de mesmo nome
-.PHONY: all debug run run-debug build-run build-run-debug check clean info install-deps dist help
+.PHONY: all debug run run-debug build-run build-run-debug check clean info install-deps dist help test-usuarios
 
 # Detectar mudanças nos headers
 $(MAIN_FILE): $(HEADER_FILES)
