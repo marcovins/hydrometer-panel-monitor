@@ -309,6 +309,6 @@ O código está:
 
 ---
 
-**Autor:** GitHub Copilot  
+**Autor:** Marcos Belo  
 **Data:** 07/12/2025  
 **Versão:** 2.0 - Estrutura Modular Completa

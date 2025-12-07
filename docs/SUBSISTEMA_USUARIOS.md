@@ -147,4 +147,4 @@ A Fachada atua como ponto de entrada único, escondendo a complexidade deste sub
 
 ## Autores
 
-Desenvolvido como parte do projeto acadêmico de Padrões de Projeto.
+Marcos Belo
