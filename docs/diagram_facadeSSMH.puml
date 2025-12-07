@@ -1,0 +1,111 @@
+@startuml FachadaSSMH
+
+' Cliente
+class PainelCliente {
+    -fachada: FachadaSSMH
+    +main(): void
+    +exibirMenuPrincipal(): void
+    +processarOpcaoUsuario(): void
+}
+
+' Padrão Facade - Ponto de Entrada Unificado
+class FachadaSSMH {
+    -usuarioService: UsuarioService
+    -monitoramentoService: MonitoramentoService
+    -alertaService: AlertaService
+    -commandInvoker: CommandInvoker
+    -logManager: LogManager
+    +executarComandoUsuario(comando: UserCommand): void
+    +desfazerUltimoComando(): void
+    +criarUsuario(dados: Map): Usuario
+    +buscarUsuario(id: int): Usuario
+    +atualizarUsuario(id: int, dados: Map): void
+    +deletarUsuario(id: int): void
+    +vincularHidrometro(idUser: int, idSha: String): void
+    +listarHidrometros(idUser: int): List<String>
+    +listarContasDeAgua(idUser: int): List<Fatura>
+    +monitorarConsumo(monitoravel: ConsumoMonitoravel, dataInicio: Date, dataFim: Date): double
+    +processarLeituraOCR(imagem: String): void
+    +configurarRegraDeAlerta(idUsuario: int, tipoEstrategia: String, valorParametro: String): void
+    +listarAlertasAtivos(): List<AlertaAtivo>
+    +configurarCanalNotificacao(tipoNotificacao: String): void
+}
+
+' Padrão Singleton - LogManager
+class LogManager <<Singleton>> {
+    -instance: LogManager
+    -caminhoArquivo: String
+    -LogManager()
+    +getInstance(): LogManager
+    +registrarInfo(metodo: String, mensagem: String): void
+    +registrarErro(metodo: String, mensagem: String): void
+    +registrarDebug(metodo: String, mensagem: String): void
+}
+
+' Subsistemas (Simplificados para visão geral)
+class UsuarioService <<Subsistema>> {
+    -armazenamentoStrategy: ArmazenamentoStrategy
+    +criarUsuario(dados): Usuario
+    +buscarUsuario(id): Usuario
+    +atualizarUsuario(id, dados): void
+    +deletarUsuario(id): void
+    +vincularHidrometro(idUser, idSha): void
+}
+
+class MonitoramentoService <<Subsistema>> {
+    -ocr: ProcessadorOCR
+    -repositorio: LeituraDAO
+    +processarLeitura(imagem): void
+    +consultarConsumo(monitoravel, dataInicio, dataFim): double
+}
+
+class AlertaService <<Subsistema>> {
+    -notificacaoStrategy: NotificacaoStrategy
+    -estrategiaAnalise: EstrategiaAnaliseConsumo
+    -observers: List<AlertObserver>
+    +configurarRegra(idUsuario, tipo, valor): void
+    +verificarRegras(usuario, consumo): void
+    +buscarAlertasAtivos(): List<AlertaAtivo>
+}
+
+' Invoker do Command
+class CommandInvoker {
+    -historico: Stack<UserCommand>
+    +executarComando(comando): void
+    +desfazer(): void
+}
+
+' Relacionamentos - Facade
+PainelCliente --> FachadaSSMH : usa
+FachadaSSMH --> UsuarioService : delega
+FachadaSSMH --> MonitoramentoService : delega
+FachadaSSMH --> AlertaService : delega
+FachadaSSMH --> CommandInvoker : usa
+FachadaSSMH --> LogManager : registra
+
+' Relacionamentos - Subsistemas usam Singleton
+UsuarioService ..> LogManager : registra
+MonitoramentoService ..> LogManager : registra
+AlertaService ..> LogManager : registra
+
+note right of FachadaSSMH
+  <<Facade>>
+  Ponto de entrada único
+  Simplifica interface complexa
+  dos subsistemas
+end note
+
+note left of LogManager
+  <<Singleton>>
+  Instância única compartilhada
+  por todos os subsistemas
+  para logging centralizado
+end note
+
+note bottom of PainelCliente
+  Cliente conhece apenas
+  a Fachada, não os
+  subsistemas internos
+end note
+
+@enduml

@@ -1,0 +1,142 @@
+@startuml AlertSystem
+
+' Padrão Observer - Subject
+class AlertaService <<Subject>> {
+    -notificacaoStrategy: NotificacaoStrategy
+    -regrasAlerta: List<RegraAlerta>
+    -alertasAtivos: List<AlertaAtivo>
+    -observers: List<AlertObserver>
+    +anexarObserver(observer: AlertObserver): void
+    +desanexarObserver(observer: AlertObserver): void
+    +notificarObservers(alerta: AlertaAtivo): void
+    +verificarRegras(usuario: Usuario, consumoAtual: double): void
+    +salvarRegra(id_usuario: int, tipoEstrategia: String, valorParametro: String): void
+    +buscarAlertasAtivos(): List<AlertaAtivo>
+    +definirEstrategia(tipo: String): void
+    +executarVerificacaoAutomatica(): void
+}
+
+' Padrão Observer - Observer Interface
+interface AlertObserver {
+    +atualizar(alerta: AlertaAtivo): void
+}
+
+' Padrão Observer - Observers Concretos
+class PainelObserver {
+    +atualizar(alerta: AlertaAtivo): void
+}
+
+class LoggerObserver {
+    -logManager: LogManager
+    +atualizar(alerta: AlertaAtivo): void
+}
+
+class NotificacaoObserver {
+    -strategy: NotificacaoStrategy
+    +atualizar(alerta: AlertaAtivo): void
+}
+
+' Padrão Strategy - Interface para Análise
+interface EstrategiaAnaliseConsumo {
+    +analisar(consumoAtual: double, valorParametro: String): boolean
+}
+
+' Padrão Strategy - Estratégias de Análise Concretas
+class LimiteDiarioStrategy {
+    +analisar(consumoAtual: double, valorParametro: String): boolean
+}
+
+class MediaMovelStrategy {
+    +analisar(consumoAtual: double, valorParametro: String): boolean
+}
+
+class DeteccaoVazamentoStrategy {
+    +analisar(consumoAtual: double, valorParametro: String): boolean
+}
+
+' Padrão Strategy - Interface para Notificação
+interface NotificacaoStrategy {
+    +enviar(mensagem: String, destinatario: String): void
+}
+
+' Padrão Strategy - Estratégias de Notificação Concretas
+class NotificacaoWindowsPopup {
+    +enviar(mensagem: String, destinatario: String): void
+}
+
+class NotificacaoConsoleLog {
+    +enviar(mensagem: String, destinatario: String): void
+}
+
+class NotificacaoEmail {
+    -servidor: String
+    -porta: int
+    +enviar(mensagem: String, destinatario: String): void
+}
+
+' Entidades de Domínio
+class RegraAlerta {
+    -id: int
+    -usuarioId: int
+    -tipoEstrategia: String
+    -valorParametro: String
+    -ativo: boolean
+}
+
+class AlertaAtivo {
+    -id: int
+    -usuarioId: int
+    -mensagem: String
+    -dataDisparo: Date
+    -status: String
+    -severidade: String
+}
+
+' Relacionamentos - Padrão Observer
+AlertObserver <|.. PainelObserver
+AlertObserver <|.. LoggerObserver
+AlertObserver <|.. NotificacaoObserver
+AlertaService o--> AlertObserver : notifica
+NotificacaoObserver --> NotificacaoStrategy : usa
+
+' Relacionamentos - Padrão Strategy (Análise)
+AlertaService --> EstrategiaAnaliseConsumo : usa
+EstrategiaAnaliseConsumo <|.. LimiteDiarioStrategy
+EstrategiaAnaliseConsumo <|.. MediaMovelStrategy
+EstrategiaAnaliseConsumo <|.. DeteccaoVazamentoStrategy
+
+' Relacionamentos - Padrão Strategy (Notificação)
+AlertaService --> NotificacaoStrategy : usa
+NotificacaoStrategy <|.. NotificacaoWindowsPopup
+NotificacaoStrategy <|.. NotificacaoConsoleLog
+NotificacaoStrategy <|.. NotificacaoEmail
+
+' Relacionamentos - Entidades
+AlertaService ..> RegraAlerta : gerencia
+AlertaService ..> AlertaAtivo : cria
+
+note right of AlertaService
+  <<Subject>> do padrão Observer
+  Notifica múltiplos observers
+  quando alerta é disparado
+  
+  Usa Strategy para análise
+  e notificação
+end note
+
+note bottom of EstrategiaAnaliseConsumo
+  <<Strategy>>
+  Permite diferentes algoritmos
+  de análise de consumo:
+  - Limite Diário
+  - Média Móvel
+  - Detecção de Vazamento
+end note
+
+note bottom of NotificacaoStrategy
+  <<Strategy>>
+  Permite diferentes canais
+  de notificação em runtime
+end note
+
+@enduml

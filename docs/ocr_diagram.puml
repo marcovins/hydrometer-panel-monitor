@@ -1,0 +1,105 @@
+@startuml OCRSystem
+
+' Service Principal
+class MonitoramentoService {
+    -ocr: ProcessadorOCR
+    -repositorio: LeituraDAO
+    +processarLeitura(imagem): void
+    +consultarConsumo(monitoravel: ConsumoMonitoravel, dataInicio: Date, dataFim: Date): double
+    +construirConsumoUsuario(idUsuario: int): ConsumoMonitoravel
+    +construirConsumoHidrometro(idSha: String): ConsumoMonitoravel
+}
+
+' Padrão Adapter - Adaptee (Biblioteca Externa OCR)
+class BibliotecaOCRExterna {
+    +reconhecerTexto(bytes: byte[]): String
+    +processarImagem(path: String): ResultadoOCR
+}
+
+' Padrão Adapter - Target Interface
+interface ProcessadorOCR {
+    +extrairNumeros(caminhoImagem: String): int
+}
+
+' Padrão Adapter - Adapter Concreto
+class AdaptadorOCR {
+    -bibliotecaExterna: BibliotecaOCRExterna
+    +extrairNumeros(caminhoImagem: String): int
+}
+
+' Padrão Composite - Component Interface
+interface ConsumoMonitoravel {
+    +calcularConsumo(dataInicio: Date, dataFim: Date): double
+    +obterIdentificador(): String
+}
+
+' Padrão Composite - Leaf
+class ConsumoHidrometro {
+    -idSha: String
+    -repositorio: LeituraDAO
+    +calcularConsumo(dataInicio: Date, dataFim: Date): double
+    +obterIdentificador(): String
+}
+
+' Padrão Composite - Composite
+class ConsumoUsuario {
+    -idUsuario: int
+    -hidrometros: List<ConsumoMonitoravel>
+    +adicionarHidrometro(hidrometro: ConsumoMonitoravel): void
+    +removerHidrometro(hidrometro: ConsumoMonitoravel): void
+    +calcularConsumo(dataInicio: Date, dataFim: Date): double
+    +obterIdentificador(): String
+}
+
+' DAO para persistência
+class LeituraDAO {
+    -conexao: Connection
+    +salvarLeitura(id_sha: String, valor: int, data: Date): void
+    +consultarConsumo(id_sha: String, dataInicio: Date, dataFim: Date): double
+    +consultarConsumoAgregado(lista_shas: List<String>, dataInicio: Date, dataFim: Date): double
+}
+
+' Entidade de Domínio
+class Leitura {
+    -id: int
+    -idSha: String
+    -valor: int
+    -dataHora: Date
+}
+
+' Relacionamentos - Padrão Adapter
+ProcessadorOCR <|.. AdaptadorOCR : implementa
+AdaptadorOCR --> BibliotecaOCRExterna : adapta
+MonitoramentoService --> ProcessadorOCR : usa
+
+' Relacionamentos - Padrão Composite
+ConsumoMonitoravel <|.. ConsumoHidrometro : implementa
+ConsumoMonitoravel <|.. ConsumoUsuario : implementa
+ConsumoUsuario o--> ConsumoMonitoravel : contém
+
+' Relacionamentos - Service e DAO
+MonitoramentoService --> LeituraDAO : grava
+MonitoramentoService --> ConsumoMonitoravel : consulta
+ConsumoHidrometro --> LeituraDAO : consulta
+LeituraDAO ..> Leitura : persiste
+
+note right of AdaptadorOCR
+  <<Adapter>>
+  Converte interface da biblioteca
+  OCR externa para o formato
+  esperado pelo sistema
+end note
+
+note bottom of ConsumoUsuario
+  <<Composite>>
+  Agrega múltiplos hidrômetros
+  Soma consumo de todos os filhos
+end note
+
+note bottom of ConsumoHidrometro
+  <<Leaf>>
+  Representa um único hidrômetro
+  Consulta consumo no repositório
+end note
+
+@enduml

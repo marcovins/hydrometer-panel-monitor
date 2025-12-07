@@ -1,0 +1,152 @@
+@startuml UsersSystem
+
+' Padrão Command - Interface
+interface UserCommand {
+    +execute()
+    +undo()
+}
+
+' Padrão Command - Comandos Concretos
+class CriarUsuarioCommand {
+    -receiver: UsuarioService
+    -dados: Map
+    -usuarioCriado: Usuario
+    +execute()
+    +undo()
+}
+
+class AtualizarUsuarioCommand {
+    -receiver: UsuarioService
+    -id: int
+    -dados: Map
+    -dadosAntigos: Map
+    +execute()
+    +undo()
+}
+
+class DeletarUsuarioCommand {
+    -receiver: UsuarioService
+    -id: int
+    -usuarioDeletado: Usuario
+    +execute()
+    +undo()
+}
+
+class VincularHidrometroCommand {
+    -receiver: UsuarioService
+    -idUser: int
+    -idSha: String
+    +execute()
+    +undo()
+}
+
+' Padrão Command - Invoker
+class CommandInvoker {
+    -historico: Stack<UserCommand>
+    +executarComando(comando: UserCommand)
+    +desfazer()
+}
+
+' Receiver do Command - Padrão Strategy
+class UsuarioService <<Receiver>> {
+    -armazenamentoStrategy: ArmazenamentoStrategy
+    +criarUsuario(dados): Usuario
+    +buscarUsuario(id): Usuario
+    +atualizarUsuario(id, dados)
+    +deletarUsuario(id)
+    +vincularHidrometro(id_user, id_sha)
+    +listarHidrometros(id_user): List<String>
+    +listarContasDeAgua(id_user): List<Fatura>
+    +definirImplementacao(tipo)
+}
+
+' Padrão Strategy - Interface
+interface ArmazenamentoStrategy {
+    +salvar(entidade)
+    +buscar(id)
+    +atualizar(id, dados)
+    +deletar(id)
+    +associarHidrometro(id_user, id_sha)
+    +listarHidrometros(id_user): List<String>
+    +buscarFaturas(id_user): List<Fatura>
+}
+
+' Padrão Strategy - Estratégias Concretas
+class ArmazenamentoSqlite {
+    -conexao: Connection
+    +salvar(entidade)
+    +buscar(id)
+    +atualizar(id, dados)
+    +deletar(id)
+    +associarHidrometro(id_user, id_sha)
+    +listarHidrometros(id_user): List<String>
+    +buscarFaturas(id_user): List<Fatura>
+}
+
+class ArmazenamentoVolatil {
+    -usuarios: HashMap<Integer, Usuario>
+    -vinculos: HashMap<Integer, List<String>>
+    -faturas: HashMap<Integer, List<Fatura>>
+    +salvar(entidade)
+    +buscar(id)
+    +atualizar(id, dados)
+    +deletar(id)
+    +associarHidrometro(id_user, id_sha)
+    +listarHidrometros(id_user): List<String>
+    +buscarFaturas(id_user): List<Fatura>
+}
+
+' Entidades de Domínio
+class Usuario {
+    -id: int
+    -nome: String
+    -email: String
+    -tipoPerfil: TipoPerfil
+}
+
+class Fatura {
+    -id: int
+    -idUsuario: int
+    -valor: double
+    -dataVencimento: Date
+    -status: String
+}
+
+enum TipoPerfil {
+    ADMIN
+    LEITOR
+}
+
+' Relacionamentos - Padrão Command
+UserCommand <|.. CriarUsuarioCommand
+UserCommand <|.. AtualizarUsuarioCommand
+UserCommand <|.. DeletarUsuarioCommand
+UserCommand <|.. VincularHidrometroCommand
+
+CommandInvoker --> UserCommand : executa
+CriarUsuarioCommand --> UsuarioService : chama
+AtualizarUsuarioCommand --> UsuarioService : chama
+DeletarUsuarioCommand --> UsuarioService : chama
+VincularHidrometroCommand --> UsuarioService : chama
+
+' Relacionamentos - Padrão Strategy
+UsuarioService --> ArmazenamentoStrategy : usa
+ArmazenamentoStrategy <|.. ArmazenamentoSqlite
+ArmazenamentoStrategy <|.. ArmazenamentoVolatil
+
+' Relacionamentos - Persistência
+ArmazenamentoStrategy ..> Usuario : persiste
+ArmazenamentoStrategy ..> Fatura : persiste
+Usuario --> TipoPerfil : possui
+
+note right of UsuarioService
+  <<Receiver>> do padrão Command
+  Usa Strategy para persistência
+end note
+
+note bottom of CommandInvoker
+  <<Invoker>> do padrão Command
+  Permite undo de operações
+end note
+
+@enduml
