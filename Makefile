@@ -21,6 +21,7 @@ TARGET_TEST_USUARIOS_DB = test_usuarios_db
 TARGET_EXEMPLO_FACTORY = exemplo_factory
 TARGET_TEST_MULTITHREAD = test_multithread_hidrometros
 TARGET_DEMO_MULTITHREAD = demo_multithread
+TARGET_TEST_MONITORAMENTO = test_monitoramento
 
 MAIN_FILE = main.cpp
 TEST_USUARIOS_FILE = test_usuarios.cpp
@@ -28,11 +29,13 @@ TEST_USUARIOS_DB_FILE = test_usuarios_db.cpp
 EXEMPLO_FACTORY_FILE = exemplo_factory.cpp
 TEST_MULTITHREAD_FILE = test_multithread_hidrometros.cpp
 DEMO_MULTITHREAD_FILE = demo_multithread.cpp
+TEST_MONITORAMENTO_FILE = test_monitoramento.cpp
 
 # Diretórios de código fonte
 SRC_DIR = src
 SIMULATOR_DIR = $(SRC_DIR)/simulator
 USUARIOS_DIR = $(SRC_DIR)/usuarios
+MONITORAMENTO_DIR = $(SRC_DIR)/monitoramento
 UTILS_DIR = $(SRC_DIR)/utils
 
 # Arquivos do simulador
@@ -44,6 +47,24 @@ SIMULATOR_SOURCES = $(SIMULATOR_DIR)/simulator.cpp \
 # Arquivos de utilitários
 UTILS_SOURCES = $(UTILS_DIR)/image.cpp \
                 $(UTILS_DIR)/logger.cpp
+
+# Arquivos do subsistema de monitoramento
+MONITORAMENTO_DOMAIN = $(MONITORAMENTO_DIR)/domain/leitura.cpp
+
+MONITORAMENTO_COMPOSITE = $(MONITORAMENTO_DIR)/composite/consumo_hidrometro.cpp \
+                          $(MONITORAMENTO_DIR)/composite/consumo_usuario.cpp
+
+MONITORAMENTO_ADAPTER = $(MONITORAMENTO_DIR)/adapter/adaptador_ocr.cpp
+
+MONITORAMENTO_STORAGE = $(MONITORAMENTO_DIR)/storage/leitura_dao_memoria.cpp
+
+MONITORAMENTO_SERVICES = $(MONITORAMENTO_DIR)/services/monitoramento_service.cpp
+
+MONITORAMENTO_SOURCES = $(MONITORAMENTO_DOMAIN) \
+                        $(MONITORAMENTO_COMPOSITE) \
+                        $(MONITORAMENTO_ADAPTER) \
+                        $(MONITORAMENTO_STORAGE) \
+                        $(MONITORAMENTO_SERVICES)
 
 # Arquivos do subsistema de usuários
 USUARIOS_DOMAIN = $(USUARIOS_DIR)/domain/usuario.cpp
@@ -124,7 +145,7 @@ check: $(MAIN_FILE) $(HEADER_FILES)
 # Limpar arquivos gerados
 clean:
 	@echo "$(RED)Limpando arquivos compilados...$(NC)"
-	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS) $(TARGET_TEST_USUARIOS_DB) $(TARGET_EXEMPLO_FACTORY) $(TARGET_TEST_MULTITHREAD) $(TARGET_DEMO_MULTITHREAD)
+	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS) $(TARGET_TEST_USUARIOS_DB) $(TARGET_EXEMPLO_FACTORY) $(TARGET_TEST_MULTITHREAD) $(TARGET_DEMO_MULTITHREAD) $(TARGET_TEST_MONITORAMENTO)
 	rm -f *.db  # Remove bancos de dados de teste
 	@echo "$(RED)✓ Limpeza concluída!$(NC)"
 
@@ -207,6 +228,19 @@ $(TARGET_DEMO_MULTITHREAD): $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTIL
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_MULTITHREAD) $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) -pthread $(CAIRO_LIBS)
 	@echo "$(GREEN)✓ Compilação concluída!$(NC)"
 
+# Compilar e executar teste do subsistema de monitoramento
+test-monitoramento: $(TARGET_TEST_MONITORAMENTO)
+	@echo "$(BLUE)Executando teste do subsistema de monitoramento...$(NC)"
+	@echo "$(BLUE)================================$(NC)"
+	./$(TARGET_TEST_MONITORAMENTO)
+	@echo "$(BLUE)================================$(NC)"
+
+# Compilação do teste de monitoramento
+$(TARGET_TEST_MONITORAMENTO): $(TEST_MONITORAMENTO_FILE) $(MONITORAMENTO_SOURCES) $(UTILS_SOURCES)
+	@echo "$(BLUE)Compilando teste de monitoramento...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_MONITORAMENTO) $(TEST_MONITORAMENTO_FILE) $(MONITORAMENTO_SOURCES) $(UTILS_DIR)/logger.cpp
+	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
+
 # Mostrar informações do projeto
 info:
 	@echo "$(GREEN)========== INFORMAÇÕES DO PROJETO ===========$(NC)"
@@ -216,17 +250,25 @@ info:
 	@echo "$(YELLOW)Compilador:$(NC) $(CXX) $(CXXFLAGS)"
 	@echo ""
 	@echo "$(BLUE)Estrutura do Projeto:$(NC)"
-	@echo "  src/simulator/      - Simulador de hidrômetro"
-	@echo "  src/usuarios/       - Subsistema de usuários"
-	@echo "    ├── domain/       - Entidades de domínio"
-	@echo "    ├── storage/      - Estratégias de persistência"
-	@echo "    ├── commands/     - Padrão Command"
-	@echo "    └── services/     - Serviços e lógica de negócio"
-	@echo "  src/utils/          - Utilitários (Logger, Image)"
+	@echo "  src/simulator/       - Simulador de hidrômetro"
+	@echo "  src/usuarios/        - Subsistema de usuários"
+	@echo "    ├── domain/        - Entidades de domínio"
+	@echo "    ├── storage/       - Estratégias de persistência"
+	@echo "    ├── commands/      - Padrão Command"
+	@echo "    └── services/      - Serviços e lógica de negócio"
+	@echo "  src/monitoramento/   - Subsistema de monitoramento"
+	@echo "    ├── domain/        - Entidade Leitura"
+	@echo "    ├── composite/     - Padrão Composite (consumo)"
+	@echo "    ├── adapter/       - Padrão Adapter (OCR)"
+	@echo "    ├── storage/       - DAO de leituras"
+	@echo "    └── services/      - MonitoramentoService"
+	@echo "  src/utils/           - Utilitários (Logger, Image)"
 	@echo ""
 	@echo "$(GREEN)Padrões de Projeto Implementados:$(NC)"
 	@echo "  • Strategy  - Persistência (Volátil/SQLite)"
 	@echo "  • Command   - Operações com undo/redo"
+	@echo "  • Composite - Agregação de consumo"
+	@echo "  • Adapter   - Processamento OCR"
 	@echo "  • Factory   - Criação de serviços"
 	@echo "  • Singleton - Logger do sistema"
 	@echo "$(GREEN)==============================================$(NC)"
@@ -269,6 +311,9 @@ help:
 	@echo "  $(YELLOW)make test-multithread$(NC)  - Teste interativo de múltiplos hidrometros"
 	@echo "  $(YELLOW)make demo-multithread$(NC)  - Demonstração automatica (recomendado)"
 	@echo ""
+	@echo "$(BLUE)Subsistema de Monitoramento:$(NC)"
+	@echo "  $(YELLOW)make test-monitoramento$(NC) - Teste do subsistema de monitoramento"
+	@echo ""
 	@echo "$(BLUE)Utilitários:$(NC)"
 	@echo "  $(YELLOW)make clean$(NC)            - Remove arquivos compilados e bancos de teste"
 	@echo "  $(YELLOW)make info$(NC)             - Mostra informações do projeto"
@@ -281,7 +326,7 @@ help:
 
 # Evitar conflitos com arquivos de mesmo nome
 .PHONY: all debug run run-debug build-run build-run-debug clean info install-deps help \
-        test-usuarios test-usuarios-db test-sqlite test-volatil exemplo-factory test-multithread demo-multithread
+        test-usuarios test-usuarios-db test-sqlite test-volatil exemplo-factory test-multithread demo-multithread test-monitoramento
 
 # Detectar mudanças nos headers
 $(MAIN_FILE): $(HEADER_FILES)
