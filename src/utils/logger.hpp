@@ -55,6 +55,12 @@ public:
     void log(LogLevel level, const std::string& contexto, const std::string& mensagem);
     void fecharArquivo();
     
+    // Métodos de conveniência para a Fachada
+    void registrarInfo(const std::string& contexto, const std::string& mensagem);
+    void registrarErro(const std::string& contexto, const std::string& mensagem);
+    void registrarDebug(const std::string& contexto, const std::string& mensagem);
+    void registrarAviso(const std::string& contexto, const std::string& mensagem);
+    
 private:
     std::string getLevelString(LogLevel level) const;
     std::string getTimestamp() const;

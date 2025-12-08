@@ -148,3 +148,21 @@ void Logger::clearRuntimeArea() {
     // Limpa a tela completamente
     std::cout << "\033[2J\033[H" << std::flush;
 }
+// Métodos de conveniência para a Fachada
+void Logger::registrarInfo(const std::string& contexto, const std::string& mensagem) {
+    log(LogLevel::INFO, contexto, mensagem);
+}
+
+void Logger::registrarErro(const std::string& contexto, const std::string& mensagem) {
+    log(LogLevel::ERROR, contexto, mensagem);
+}
+
+void Logger::registrarDebug(const std::string& contexto, const std::string& mensagem) {
+    if (showDebug) {
+        log(LogLevel::DEBUG, contexto, mensagem);
+    }
+}
+
+void Logger::registrarAviso(const std::string& contexto, const std::string& mensagem) {
+    log(LogLevel::WARNING, contexto, mensagem);
+}
