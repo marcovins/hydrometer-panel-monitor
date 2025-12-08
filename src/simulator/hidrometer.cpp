@@ -63,6 +63,22 @@ void Hidrometer::deactivate() {
     this->status.store(false);
 }
 
+void Hidrometer::shutdown() {
+    Logger::log(LogLevel::SHUTDOWN, "[DEBUG] Hidrometer::shutdown - Parando thread do hidrómetro");
+    this->status.store(false);
+    this->running.store(false);
+    
+    if (this->update_thread.joinable()) {
+        this->update_thread.join();
+        Logger::log(LogLevel::SHUTDOWN, "[DEBUG] Hidrometer::shutdown - Thread finalizada");
+    }
+}
+
+void Hidrometer::setCounter(int valor) {
+    this->counter.store(valor);
+    this->counterFloat = static_cast<float>(valor);
+}
+
 void Hidrometer::update() {
     static int updateCount = 0;
     updateCount++;
