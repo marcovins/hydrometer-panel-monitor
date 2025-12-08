@@ -49,6 +49,19 @@ public:
     
     // Método para verificar se está conectado
     bool estaConectado() const;
+    
+    // Métodos para persistência de hidrômetros simulados
+    void salvarHidrometroSimulado(const std::string& idSha, double vazao, bool ativo, int contador);
+    void atualizarHidrometroSimulado(const std::string& idSha, double vazao, bool ativo, int contador);
+    bool hidrometroSimuladoExiste(const std::string& idSha);
+    struct InfoHidrometroSimulado {
+        std::string idSha;
+        double vazao;
+        bool ativo;
+        int contador;
+        time_t dataCriacao;
+    };
+    std::vector<InfoHidrometroSimulado> listarHidrometrosSimulados();
 };
 
 #endif

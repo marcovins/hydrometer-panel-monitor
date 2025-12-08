@@ -63,6 +63,17 @@ void ArmazenamentoSqlite::criarTabelas() {
         );
     )";
     
+    // Tabela de hidrômetros simulados
+    std::string sqlHidrometros = R"(
+        CREATE TABLE IF NOT EXISTS hidrometros_simulados (
+            id_sha TEXT PRIMARY KEY,
+            vazao REAL NOT NULL DEFAULT 0.00478,
+            ativo INTEGER NOT NULL DEFAULT 1,
+            contador INTEGER NOT NULL DEFAULT 0,
+            data_criacao INTEGER NOT NULL
+        );
+    )";
+    
     // Índices para melhor performance
     std::string sqlIndices = R"(
         CREATE INDEX IF NOT EXISTS idx_vinculos_usuario ON vinculos_hidrometro(id_usuario);
@@ -72,6 +83,7 @@ void ArmazenamentoSqlite::criarTabelas() {
     executarSQL(sqlUsuarios);
     executarSQL(sqlVinculos);
     executarSQL(sqlFaturas);
+    executarSQL(sqlHidrometros);
     executarSQL(sqlIndices);
 }
 
@@ -329,4 +341,74 @@ int ArmazenamentoSqlite::proximoId() {
 
 bool ArmazenamentoSqlite::estaConectado() const {
     return db != nullptr && initialized;
+}
+
+// Métodos para persistência de hidrômetros simulados
+void ArmazenamentoSqlite::salvarHidrometroSimulado(const std::string& idSha, double vazao, bool ativo, int contador) {
+    std::stringstream ss;
+    ss << "INSERT OR REPLACE INTO hidrometros_simulados (id_sha, vazao, ativo, contador, data_criacao) VALUES ("
+       << "'" << escaparString(idSha) << "', "
+       << vazao << ", "
+       << (ativo ? 1 : 0) << ", "
+       << contador << ", "
+       << static_cast<int64_t>(time(nullptr)) << ")";
+    
+    executarSQL(ss.str());
+}
+
+void ArmazenamentoSqlite::atualizarHidrometroSimulado(const std::string& idSha, double vazao, bool ativo, int contador) {
+    std::stringstream ss;
+    ss << "UPDATE hidrometros_simulados SET "
+       << "vazao = " << vazao << ", "
+       << "ativo = " << (ativo ? 1 : 0) << ", "
+       << "contador = " << contador
+       << " WHERE id_sha = '" << escaparString(idSha) << "'";
+    
+    executarSQL(ss.str());
+}
+
+bool ArmazenamentoSqlite::hidrometroSimuladoExiste(const std::string& idSha) {
+    std::stringstream ss;
+    ss << "SELECT COUNT(*) FROM hidrometros_simulados WHERE id_sha = '" << escaparString(idSha) << "'";
+    
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, ss.str().c_str(), -1, &stmt, nullptr);
+    
+    if (rc != SQLITE_OK) {
+        return false;
+    }
+    
+    bool existe = false;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        existe = (sqlite3_column_int(stmt, 0) > 0);
+    }
+    
+    sqlite3_finalize(stmt);
+    return existe;
+}
+
+std::vector<ArmazenamentoSqlite::InfoHidrometroSimulado> ArmazenamentoSqlite::listarHidrometrosSimulados() {
+    std::string sql = "SELECT id_sha, vazao, ativo, contador, data_criacao FROM hidrometros_simulados ORDER BY data_criacao";
+    
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+    
+    if (rc != SQLITE_OK) {
+        throw std::runtime_error("Erro ao preparar statement de listagem de hidrômetros simulados");
+    }
+    
+    std::vector<InfoHidrometroSimulado> hidrometros;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        InfoHidrometroSimulado info;
+        info.idSha = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+        info.vazao = sqlite3_column_double(stmt, 1);
+        info.ativo = sqlite3_column_int(stmt, 2) == 1;
+        info.contador = sqlite3_column_int(stmt, 3);
+        info.dataCriacao = static_cast<time_t>(sqlite3_column_int64(stmt, 4));
+        
+        hidrometros.push_back(info);
+    }
+    
+    sqlite3_finalize(stmt);
+    return hidrometros;
 }
