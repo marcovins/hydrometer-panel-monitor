@@ -66,9 +66,9 @@ bool HidrometerManager::removerHidrometro(int idUsuario, const std::string& idSh
     auto& hidrometros = it->second;
     for (auto hit = hidrometros.begin(); hit != hidrometros.end(); ++hit) {
         if ((*hit)->idSha == idSha) {
-            // Para o hidrômetro
+            // Para o hidrômetro completamente
             (*hit)->running = false;
-            (*hit)->hidrometer->deactivate();
+            (*hit)->hidrometer->shutdown();
             
             if ((*hit)->workerThread.joinable()) {
                 (*hit)->workerThread.join();
@@ -98,7 +98,7 @@ void HidrometerManager::removerTodosHidrometrosUsuario(int idUsuario) {
     auto& hidrometros = it->second;
     for (auto& info : hidrometros) {
         info->running = false;
-        info->hidrometer->deactivate();
+        info->hidrometer->shutdown();
         
         if (info->workerThread.joinable()) {
             info->workerThread.join();
@@ -141,17 +141,18 @@ void HidrometerManager::pararTodos() {
     systemRunning = false;
     int totalParados = 0;
     
+    // Para todos os hidrômetros e suas threads internas
     for (auto& [idUsuario, hidrometros] : hidrometrosPorUsuario) {
         for (auto& info : hidrometros) {
             if (info->running) {
                 info->running = false;
-                info->hidrometer->deactivate();
+                info->hidrometer->shutdown();  // Para completamente (thread interna)
                 totalParados++;
             }
         }
     }
     
-    // Aguarda todas as threads terminarem
+    // Aguarda todas as threads do manager terminarem
     for (auto& [idUsuario, hidrometros] : hidrometrosPorUsuario) {
         for (auto& info : hidrometros) {
             if (info->workerThread.joinable()) {
@@ -161,12 +162,12 @@ void HidrometerManager::pararTodos() {
     }
     
     std::ostringstream oss;
-    oss << "[HidrometerManager] " << totalParados << " hidrometros parados";
+    oss << "[HidrometerManager] " << totalParados << " hidrometros parados (threads finalizadas)";
     Logger::log(LogLevel::SHUTDOWN, oss.str());
 }
 
-std::vector<std::string> HidrometerManager::listarHidrometrosUsuario(int idUsuario) {
-    std::lock_guard<std::mutex> lock(managerMutex);
+std::vector<std::string> HidrometerManager::listarHidrometrosUsuario(int idUsuario) const {
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(managerMutex));
     
     std::vector<std::string> lista;
     auto it = hidrometrosPorUsuario.find(idUsuario);

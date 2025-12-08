@@ -4,26 +4,52 @@
     int Simulator::getKey() const {
         struct termios oldt, newt;
         int ch;
+        int oldf;
+        
         tcgetattr(STDIN_FILENO, &oldt);
         newt = oldt;
         newt.c_lflag &= ~(ICANON | ECHO); // Desativa modo canônico e eco
         tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        
+        // Torna não-bloqueante
+        oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+        fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+        
         ch = getchar();
+        
+        // Restaura modo bloqueante
+        fcntl(STDIN_FILENO, F_SETFL, oldf);
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        
+        if (ch == EOF || ch == -1) {
+            return 0; // Nenhuma tecla pressionada
+        }
+        
         if (ch == 27) { // ESC ou sequência de escape
-            if (getchar() == 91) { // [
-                ch = getchar();
-                switch (ch) {
-                    case 'A': return KEY_UP;    // seta cima
-                    case 'B': return KEY_DOWN;  // seta baixo
-                    case 'C': return KEY_RIGHT; // seta direita
-                    case 'D': return KEY_LEFT;  // seta esquerda
+            // Torna não-bloqueante temporariamente para ler sequência
+            tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+            fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+            
+            int ch2 = getchar();
+            if (ch2 == 91) { // [
+                int ch3 = getchar();
+                fcntl(STDIN_FILENO, F_SETFL, oldf);
+                tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+                
+                switch (ch3) {
+                    case 'A': return KEY_UP;
+                    case 'B': return KEY_DOWN;
+                    case 'C': return KEY_RIGHT;
+                    case 'D': return KEY_LEFT;
                     default: return 0;
                 }
-            } else {
-                return KEY_ESC; // ESC simples
             }
+            
+            fcntl(STDIN_FILENO, F_SETFL, oldf);
+            tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+            return KEY_ESC;
         }
-        tcsetattr(STDIN_FILENO, TCSANOW, &oldt); // Restaura configurações
+        
         return ch;
     }
 
@@ -40,6 +66,22 @@
         while (this->running.load()) {
             iteration++;
             input = this->getKey();
+            
+            // Se não há entrada, aguarda um pouco antes de verificar novamente
+            if (input == 0) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                
+                // Atualiza display mesmo sem entrada
+                Logger::logRuntime(
+                    this->hidrometer[atual].getStatus() ? "ATIVO" : "INATIVO",
+                    this->hidrometer[atual].getPipeIN()->getFlowRate(),
+                    this->hidrometer[atual].getPipeOUT()->getFlowRate(),
+                    this->hidrometer[atual].getCounter(),
+                    atual
+                );
+                continue;
+            }
+            
             switch (input) {
                 case KEY_UP:
                     atual.store(atual.load() == MAX_SIM-1 ? 0 : atual.load()+1);
@@ -69,21 +111,20 @@
                     tcflush(STDIN_FILENO, TCIFLUSH);
                     break;
                 default:
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    // Tecla não reconhecida, ignora
                     break;
-                            // Usa o novo sistema de log para runtime
-
             }
         
+            // Atualiza display após processar comando
             Logger::logRuntime(
-            this->hidrometer[atual].getStatus() ? "ATIVO" : "INATIVO",
-            this->hidrometer[atual].getPipeIN()->getFlowRate(),
-            this->hidrometer[atual].getPipeOUT()->getFlowRate(),
-            this->hidrometer[atual].getCounter(),
-            atual
+                this->hidrometer[atual].getStatus() ? "ATIVO" : "INATIVO",
+                this->hidrometer[atual].getPipeIN()->getFlowRate(),
+                this->hidrometer[atual].getPipeOUT()->getFlowRate(),
+                this->hidrometer[atual].getCounter(),
+                atual
             );
         }
-        Logger::log(LogLevel::SHUTDOWN, "[DEBUG] Simulator::updateFlow - Thread de geração de vazão finalizada após " + std::to_string(iteration) + " iterações");
+        Logger::log(LogLevel::SHUTDOWN, "[DEBUG] Simulator::updateFlow - Thread de controle finalizada após " + std::to_string(iteration) + " iterações");
     }
 
     Simulator::Simulator() {
@@ -126,22 +167,35 @@
             return;
         }
         
+        Logger::log(LogLevel::SHUTDOWN, "[INFO] Parando hidrômetros...");
+        
+        // Para completamente os hidrômetros (finaliza threads internas)
         for (size_t i = 0; i < MAX_SIM; i++)
         {
-            this->hidrometer[i].deactivate();
+            this->hidrometer[i].shutdown();
         }
-        if (inputThread.joinable()) {
-            inputThread.join();
-        }
-        if (imageThread.joinable()) {
-            imageThread.join();
-        }
+        
+        Logger::log(LogLevel::SHUTDOWN, "[INFO] Aguardando threads do simulador...");
+        
+        // Aguarda com timeout para evitar travamento
+        auto waitForThread = [](std::thread& t, const std::string& name) {
+            if (t.joinable()) {
+                Logger::log(LogLevel::SHUTDOWN, "[INFO] Aguardando thread " + name + "...");
+                t.join();
+                Logger::log(LogLevel::SHUTDOWN, "[INFO] Thread " + name + " finalizada!");
+            }
+        };
+        
+        waitForThread(inputThread, "inputThread");
+        waitForThread(imageThread, "imageThread");
 
         // Restaura configurações do terminal
         struct termios term;
         tcgetattr(STDIN_FILENO, &term);
         term.c_lflag |= (ICANON | ECHO | ISIG); // Restaura modo normal
         tcsetattr(STDIN_FILENO, TCSANOW, &term);
+        
+        Logger::log(LogLevel::SHUTDOWN, "[INFO] Todas as threads finalizadas!");
     }
 
     void Simulator::imageUpdateLoop() const {
@@ -151,8 +205,9 @@
 
         while (this->running.load()) {
             updateCount++;
+            
             for (size_t i = 0; i < MAX_SIM; i++){
-                int currentCounter = this->getCounter();
+                int currentCounter = this->hidrometer[i].getCounter();
             
                 try {
                     // Verifica se atingiu o próximo metro cúbico (1000L)
@@ -177,9 +232,6 @@
 
                         // Atualiza para o próximo marco de 1m³ (1000L)
                         nextImageThreshold[i] += 1;
-                    } else {
-                        // Aguarda um pouco antes de verificar novamente
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     }
 
                 } catch (const std::exception& e) {
@@ -188,5 +240,10 @@
                     Logger::log(LogLevel::DEBUG, "[ERROR] Simulator::imageUpdateLoop - Erro desconhecido na geração de imagem");
                 }
             }
+            
+            // Sempre aguarda antes de verificar novamente (evita loop muito rápido)
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
+        
+        Logger::log(LogLevel::SHUTDOWN, "[DEBUG] Simulator::imageUpdateLoop - Thread de geração de imagens finalizada");
     }

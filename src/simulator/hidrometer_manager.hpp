@@ -61,7 +61,7 @@ public:
     void pararTodos();
     
     // Obtém lista de hidrômetros de um usuário
-    std::vector<std::string> listarHidrometrosUsuario(int idUsuario);
+    std::vector<std::string> listarHidrometrosUsuario(int idUsuario) const;
     
     // Obtém a leitura atual de um hidrômetro específico
     int obterLeitura(int idUsuario, const std::string& idSha) const;
