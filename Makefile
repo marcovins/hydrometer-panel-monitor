@@ -21,8 +21,10 @@ TARGET_TEST_USUARIOS_DB = test_usuarios_db
 TARGET_EXEMPLO_FACTORY = exemplo_factory
 TARGET_TEST_MULTITHREAD = test_multithread_hidrometros
 TARGET_DEMO_MULTITHREAD = demo_multithread
+TARGET_DEMO_INTERACTIVE = demo_interactive
 TARGET_TEST_MONITORAMENTO = test_monitoramento
 TARGET_TEST_ALERTAS = test_alertas
+TARGET_DEMO_FACHADA = demo_fachada
 
 MAIN_FILE = main.cpp
 TEST_USUARIOS_FILE = test_usuarios.cpp
@@ -30,14 +32,18 @@ TEST_USUARIOS_DB_FILE = test_usuarios_db.cpp
 EXEMPLO_FACTORY_FILE = exemplo_factory.cpp
 TEST_MULTITHREAD_FILE = test_multithread_hidrometros.cpp
 DEMO_MULTITHREAD_FILE = demo_multithread.cpp
+DEMO_INTERACTIVE_FILE = demo_interactive.cpp
 TEST_MONITORAMENTO_FILE = test_monitoramento.cpp
 TEST_ALERTAS_FILE = test_alertas.cpp
+DEMO_FACHADA_FILE = demo_fachada.cpp
 
 # Diretórios de código fonte
 SRC_DIR = src
 SIMULATOR_DIR = $(SRC_DIR)/simulator
 USUARIOS_DIR = $(SRC_DIR)/usuarios
 MONITORAMENTO_DIR = $(SRC_DIR)/monitoramento
+ALERTAS_DIR = $(SRC_DIR)/alertas
+CORE_DIR = $(SRC_DIR)/core
 UTILS_DIR = $(SRC_DIR)/utils
 
 # Arquivos do simulador
@@ -94,6 +100,9 @@ ALERTAS_SOURCES = $(ALERTAS_DOMAIN) \
                   $(ALERTAS_NOTIFICATIONS) \
                   $(ALERTAS_OBSERVERS) \
                   $(ALERTAS_SERVICES)
+
+# Arquivos da fachada (core)
+CORE_SOURCES = $(CORE_DIR)/fachada_ssmh.cpp
 
 # Arquivos do subsistema de usuários
 USUARIOS_DOMAIN = $(USUARIOS_DIR)/domain/usuario.cpp
@@ -174,7 +183,7 @@ check: $(MAIN_FILE) $(HEADER_FILES)
 # Limpar arquivos gerados
 clean:
 	@echo "$(RED)Limpando arquivos compilados...$(NC)"
-	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS) $(TARGET_TEST_USUARIOS_DB) $(TARGET_EXEMPLO_FACTORY) $(TARGET_TEST_MULTITHREAD) $(TARGET_DEMO_MULTITHREAD) $(TARGET_TEST_MONITORAMENTO) $(TARGET_TEST_ALERTAS)
+	rm -f $(TARGET) $(TARGET_DEBUG) $(TARGET_TEST_USUARIOS) $(TARGET_TEST_USUARIOS_DB) $(TARGET_EXEMPLO_FACTORY) $(TARGET_TEST_MULTITHREAD) $(TARGET_DEMO_MULTITHREAD) $(TARGET_DEMO_INTERACTIVE) $(TARGET_TEST_MONITORAMENTO) $(TARGET_TEST_ALERTAS) $(TARGET_DEMO_FACHADA)
 	rm -f *.db  # Remove bancos de dados de teste
 	@echo "$(RED)✓ Limpeza concluída!$(NC)"
 
@@ -257,6 +266,19 @@ $(TARGET_DEMO_MULTITHREAD): $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTIL
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_MULTITHREAD) $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) -pthread $(CAIRO_LIBS)
 	@echo "$(GREEN)✓ Compilação concluída!$(NC)"
 
+# Compilar e executar demo interativa
+demo-interactive: $(TARGET_DEMO_INTERACTIVE)
+	@echo "$(BLUE)Executando demonstracao interativa...$(NC)"
+	@echo "$(BLUE)================================$(NC)"
+	./$(TARGET_DEMO_INTERACTIVE)
+	@echo "$(BLUE)================================$(NC)"
+
+# Compilação da demo interativa
+$(TARGET_DEMO_INTERACTIVE): $(DEMO_INTERACTIVE_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES)
+	@echo "$(BLUE)Compilando demonstracao interativa...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_INTERACTIVE) $(DEMO_INTERACTIVE_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) -pthread $(CAIRO_LIBS)
+	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
+
 # Compilar e executar teste do subsistema de monitoramento
 test-monitoramento: $(TARGET_TEST_MONITORAMENTO)
 	@echo "$(BLUE)Executando teste do subsistema de monitoramento...$(NC)"
@@ -282,6 +304,20 @@ $(TARGET_TEST_ALERTAS): $(TEST_ALERTAS_FILE) $(ALERTAS_SOURCES) $(UTILS_SOURCES)
 	@echo "$(GREEN)Compilando teste de alertas...$(NC)"
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_ALERTAS) $(TEST_ALERTAS_FILE) $(ALERTAS_SOURCES) $(UTILS_DIR)/logger.cpp
 	@echo "$(GREEN)✓ Compilação concluída!$(NC)"
+
+# Compilar e executar demonstração da Fachada
+demo-fachada: $(TARGET_DEMO_FACHADA)
+	@echo "$(BLUE)Executando demonstração da Fachada SSMH...$(NC)"
+	@echo "$(BLUE)================================$(NC)"
+	./$(TARGET_DEMO_FACHADA)
+	@echo "$(BLUE)================================$(NC)"
+
+# Compilação da demonstração da Fachada (inclui todos os subsistemas)
+$(TARGET_DEMO_FACHADA): $(DEMO_FACHADA_FILE) $(CORE_SOURCES) $(USUARIO_DB_SOURCES) $(MONITORAMENTO_SOURCES) $(ALERTAS_SOURCES) $(SIMULATOR_SOURCES) $(UTILS_SOURCES)
+	@echo "$(BLUE)Compilando demonstração da Fachada...$(NC)"
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_FACHADA) $(DEMO_FACHADA_FILE) $(CORE_SOURCES) $(USUARIO_DB_SOURCES) $(MONITORAMENTO_SOURCES) $(ALERTAS_SOURCES) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) -pthread $(CAIRO_LIBS) $(SQLITE_LIBS)
+	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
+	@echo "$(BLUE)✓ Fachada compilada com sucesso - orquestrando os 3 subsistemas!$(NC)"
 
 # Mostrar informações do projeto
 info:
@@ -361,12 +397,16 @@ help:
 	@echo "$(BLUE)Teste Multithread:$(NC)"
 	@echo "  $(YELLOW)make test-multithread$(NC)  - Teste interativo de múltiplos hidrometros"
 	@echo "  $(YELLOW)make demo-multithread$(NC)  - Demonstração automatica (recomendado)"
+	@echo "  $(YELLOW)make demo-interactive$(NC)  - Interface interativa para monitorar hidrometros"
 	@echo ""
 	@echo "$(BLUE)Subsistema de Monitoramento:$(NC)"
 	@echo "  $(YELLOW)make test-monitoramento$(NC) - Teste do subsistema de monitoramento"
 	@echo ""
 	@echo "$(BLUE)Subsistema de Alertas:$(NC)"
 	@echo "  $(YELLOW)make test-alertas$(NC)       - Teste completo do subsistema de alertas"
+	@echo ""
+	@echo "$(BLUE)Fachada do Sistema:$(NC)"
+	@echo "  $(YELLOW)make demo-fachada$(NC)       - Demonstração completa da Fachada SSMH"
 	@echo ""
 	@echo "$(BLUE)Utilitários:$(NC)"
 	@echo "  $(YELLOW)make clean$(NC)            - Remove arquivos compilados e bancos de teste"
@@ -380,7 +420,8 @@ help:
 
 # Evitar conflitos com arquivos de mesmo nome
 .PHONY: all debug run run-debug build-run build-run-debug clean info install-deps help \
-        test-usuarios test-usuarios-db test-sqlite test-volatil exemplo-factory test-multithread demo-multithread test-monitoramento test-alertas
+        test-usuarios test-usuarios-db test-sqlite test-volatil exemplo-factory test-multithread \
+        demo-multithread test-monitoramento test-alertas demo-fachada
 
 # Detectar mudanças nos headers
 $(MAIN_FILE): $(HEADER_FILES)

@@ -41,8 +41,12 @@ int main() {
     
     std::cout << "\n[4] Aguardando 5 segundos para acumular leituras..." << std::endl;
     for (int i = 5; i > 0; i--) {
-        std::cout << "   " << i << "..." << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::cout << "   " << i << "..." << std::flush;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::cout << " Leituras: U1=" << manager.obterLeitura(1, "SHA-001") 
+                  << "L, U2=" << manager.obterLeitura(2, "SHA-101") 
+                  << "L, U3=" << manager.obterLeitura(3, "SHA-201") << "L" << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     
     std::cout << "\n[5] Status apos 5 segundos:" << std::endl;
@@ -77,7 +81,11 @@ int main() {
     manager.exibirStatus();
     
     std::cout << "\n[10] Aguardando mais 3 segundos..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    for (int i = 3; i > 0; i--) {
+        std::cout << "   " << i << "..." << std::flush;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    std::cout << std::endl;
     
     std::cout << "\n[11] Leituras finais:" << std::endl;
     std::cout << "   Usuario 1, SHA-002: " << manager.obterLeitura(1, "SHA-002") << " litros" << std::endl;
@@ -86,6 +94,11 @@ int main() {
     
     std::cout << "\n[12] Parando todos os hidrometros..." << std::endl;
     manager.pararTodos();
+    
+    std::cout << "\n[13] Aguardando finalizacao das threads internas..." << std::flush;
+    // As threads internas dos hidrômetros serão finalizadas quando o manager for destruído
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::cout << " [OK]" << std::endl;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "  DEMO CONCLUIDA COM SUCESSO!" << std::endl;
