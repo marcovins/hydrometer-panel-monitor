@@ -240,6 +240,21 @@ USUARIO_SOURCES = $(USUARIOS_DIR)/domain/usuario.cpp ...
 ALL_SOURCES = $(SIMULATOR_SOURCES) $(USUARIO_SOURCES) ...
 ```
 
+### 🔧 Configuração de Simuladores
+
+**Novo!** O projeto agora suporta dois simuladores diferentes:
+1. **Hydrometer Project Simulator** - Completo com multi-threading e Cairo
+2. **Simulador SHA** - Com Facade, CLI e OpenCV
+
+Para trocar entre eles, edite o arquivo `simulator_config.mk`:
+```makefile
+SIMULATOR_TYPE = hydrometer-project-simulator
+# ou
+SIMULATOR_TYPE = simulador-hidrometro
+```
+
+**📖 Documentação completa:** Veja [SIMULATORS_CONFIG.md](SIMULATORS_CONFIG.md)
+
 ## Testes
 
 Cada módulo pode ser testado independentemente:
