@@ -9,9 +9,80 @@ CXXFLAGS = -std=c++17 -Wall -Wextra -O2
 DEBUG_FLAGS = -std=c++17 -Wall -Wextra -g -DDEBUG
 INCLUDE_DIR = -I./src
 
-# Bibliotecas
+# Bibliotecas base
 CAIRO_LIBS = `pkg-config --cflags --libs cairo`
 SQLITE_LIBS = -lsqlite3
+CURL_LIBS = -lcurl
+
+# Flags para configuração de email (opcional)
+# Descomente se tiver criado o arquivo config/email_config.hpp
+EMAIL_CONFIG_FLAG = -DEMAIL_CONFIG_EXISTS -I./config
+
+# Diretórios de código fonte
+SRC_DIR = src
+USUARIOS_DIR = $(SRC_DIR)/usuarios
+MONITORAMENTO_DIR = $(SRC_DIR)/monitoramento
+ALERTAS_DIR = $(SRC_DIR)/alertas
+CORE_DIR = $(SRC_DIR)/core
+UTILS_DIR = $(SRC_DIR)/utils
+
+# ==============================================================================
+# CONFIGURAÇÃO DO SIMULADOR
+# ==============================================================================
+# Inclui o arquivo de configuração do simulador
+# Para trocar de simulador, edite o arquivo simulator_config.mk
+include simulator_config.mk
+
+# Atualiza CXXFLAGS e INCLUDE_DIR com as configurações do simulador
+CXXFLAGS += $(SIMULATOR_FLAG)
+DEBUG_FLAGS += $(SIMULATOR_FLAG)
+INCLUDE_DIR += $(SIMULATOR_INCLUDE)
+
+# ==============================================================================
+
+# Arquivos principais
+TARGET = hidrometer_simulator
+TARGET_DEBUG = hidrometer_simulator_debug
+TARGET_TEST_USUARIOS = test_usuarios
+TARGET_TEST_USUARIOS_DB = test_usuarios_db
+TARGET_EXEMPLO_FACTORY = exemplo_factory
+TARGET_TEST_MULTITHREAD = test_multithread_hidrometros
+TARGET_DEMO_MULTITHREAD = demo_multithread
+TARGET_DEMO_INTERACTIVE = demo_interactive
+TARGET_TEST_MONITORAMENTO = test_monitoramento
+TARGET_TEST_ALERTAS = test_alertas
+TARGET_DEMO_FACHADA = demo_fachada
+
+MAIN_FILE = main.cpp
+TEST_USUARIOS_FILE = test_usuarios.cpp
+TEST_USUARIOS_DB_FILE = test_usuarios_db.cpp
+EXEMPLO_FACTORY_FILE = exemplo_factory.cpp
+TEST_MULTITHREAD_FILE = test_multithread_hidrometros.cpp
+DEMO_MULTITHREAD_FILE = demo_multithread.cpp
+DEMO_INTERACTIVE_FILE = demo_interactive.cpp
+TEST_MONITORAMENTO_FILE = test_monitoramento.cpp
+TEST_ALERTAS_FILE = test_alertas.cpp
+# Diretórios de código fonte
+SRC_DIR = src
+USUARIOS_DIR = $(SRC_DIR)/usuarios
+MONITORAMENTO_DIR = $(SRC_DIR)/monitoramento
+ALERTAS_DIR = $(SRC_DIR)/alertas
+CORE_DIR = $(SRC_DIR)/core
+UTILS_DIR = $(SRC_DIR)/utils
+
+# ==============================================================================
+# CONFIGURAÇÃO DO SIMULADOR
+# ==============================================================================
+# Inclui o arquivo de configuração do simulador
+# Para trocar de simulador, edite o arquivo simulator_config.mk
+include simulator_config.mk
+
+# Atualiza CXXFLAGS e INCLUDE_DIR com as configurações do simulador
+CXXFLAGS += $(SIMULATOR_FLAG)
+DEBUG_FLAGS += $(SIMULATOR_FLAG)
+INCLUDE_DIR += $(SIMULATOR_INCLUDE)
+
+# ==============================================================================
 
 # Arquivos principais
 TARGET = hidrometer_simulator
@@ -37,25 +108,6 @@ TEST_MONITORAMENTO_FILE = test_monitoramento.cpp
 TEST_ALERTAS_FILE = test_alertas.cpp
 DEMO_FACHADA_FILE = demo_fachada.cpp
 
-# Diretórios de código fonte
-SRC_DIR = src
-SIMULATOR_DIR = $(SRC_DIR)/simulator
-USUARIOS_DIR = $(SRC_DIR)/usuarios
-MONITORAMENTO_DIR = $(SRC_DIR)/monitoramento
-ALERTAS_DIR = $(SRC_DIR)/alertas
-CORE_DIR = $(SRC_DIR)/core
-UTILS_DIR = $(SRC_DIR)/utils
-
-# Arquivos do simulador
-SIMULATOR_SOURCES = $(SIMULATOR_DIR)/simulator.cpp \
-                    $(SIMULATOR_DIR)/hidrometer.cpp \
-                    $(SIMULATOR_DIR)/pipe.cpp \
-                    $(SIMULATOR_DIR)/hidrometer_manager.cpp
-
-# Arquivos de utilitários
-UTILS_SOURCES = $(UTILS_DIR)/image.cpp \
-                $(UTILS_DIR)/logger.cpp
-
 # Arquivos do subsistema de monitoramento
 MONITORAMENTO_DOMAIN = $(MONITORAMENTO_DIR)/domain/leitura.cpp
 
@@ -75,8 +127,6 @@ MONITORAMENTO_SOURCES = $(MONITORAMENTO_DOMAIN) \
                         $(MONITORAMENTO_SERVICES)
 
 # Arquivos do subsistema de alertas
-ALERTAS_DIR = $(SRC_DIR)/alertas
-
 ALERTAS_DOMAIN = $(ALERTAS_DIR)/domain/regra_alerta.cpp \
                  $(ALERTAS_DIR)/domain/alerta_ativo.cpp
 
@@ -118,7 +168,8 @@ USUARIOS_COMMANDS = $(USUARIOS_DIR)/commands/user_commands.cpp \
 USUARIOS_SERVICES = $(USUARIOS_DIR)/services/usuario_service.cpp
 
 # Combinações para compilação
-ALL_SIMULATOR_SOURCES = $(MAIN_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES)
+# Nota: SIMULATOR_SOURCES e SIMULATOR_UTILS vêm do simulator_config.mk
+ALL_SIMULATOR_SOURCES = $(MAIN_FILE) $(SIMULATOR_SOURCES) $(SIMULATOR_UTILS)
 
 USUARIO_SOURCES = $(USUARIOS_DOMAIN) \
                   $(USUARIOS_STORAGE) \
@@ -143,7 +194,7 @@ all: $(TARGET)
 # Compilação do simulador em modo release
 $(TARGET): $(ALL_SIMULATOR_SOURCES)
 	@echo "$(GREEN)Compilando simulador de hidrómetro (release)...$(NC)"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET) $(ALL_SIMULATOR_SOURCES) -pthread $(CAIRO_LIBS)
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET) $(ALL_SIMULATOR_SOURCES) $(SIMULATOR_LIBS)
 	@echo "$(GREEN)✓ Compilação concluída com sucesso!$(NC)"
 
 # Compilação em modo debug
@@ -151,7 +202,7 @@ debug: $(TARGET_DEBUG)
 
 $(TARGET_DEBUG): $(ALL_SIMULATOR_SOURCES)
 	@echo "$(YELLOW)Compilando simulador (debug)...$(NC)"
-	$(CXX) $(DEBUG_FLAGS) $(INCLUDE_DIR) -o $(TARGET_DEBUG) $(ALL_SIMULATOR_SOURCES) -pthread
+	$(CXX) $(DEBUG_FLAGS) $(INCLUDE_DIR) -o $(TARGET_DEBUG) $(ALL_SIMULATOR_SOURCES) $(SIMULATOR_LIBS)
 	@echo "$(YELLOW)✓ Compilação debug concluída!$(NC)"
 
 # Executar o programa
@@ -248,9 +299,9 @@ test-multithread: $(TARGET_TEST_MULTITHREAD)
 	@echo "$(BLUE)================================$(NC)"
 
 # Compilação do teste multithread
-$(TARGET_TEST_MULTITHREAD): $(TEST_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) $(USUARIO_SOURCES)
+$(TARGET_TEST_MULTITHREAD): $(TEST_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(SIMULATOR_UTILS) $(USUARIO_SOURCES)
 	@echo "$(BLUE)Compilando teste multithread...$(NC)"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_MULTITHREAD) $(TEST_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) $(USUARIO_SOURCES) -pthread $(CAIRO_LIBS)
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_MULTITHREAD) $(TEST_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(SIMULATOR_UTILS) $(USUARIO_SOURCES) $(SIMULATOR_LIBS)
 	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
 
 # Compilar e executar demo multithread
@@ -261,9 +312,9 @@ demo-multithread: $(TARGET_DEMO_MULTITHREAD)
 	@echo "$(GREEN)================================$(NC)"
 
 # Compilação da demo multithread
-$(TARGET_DEMO_MULTITHREAD): $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES)
+$(TARGET_DEMO_MULTITHREAD): $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(SIMULATOR_UTILS)
 	@echo "$(GREEN)Compilando demonstracao multithread...$(NC)"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_MULTITHREAD) $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) -pthread $(CAIRO_LIBS)
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_MULTITHREAD) $(DEMO_MULTITHREAD_FILE) $(SIMULATOR_SOURCES) $(SIMULATOR_UTILS) $(SIMULATOR_LIBS)
 	@echo "$(GREEN)✓ Compilação concluída!$(NC)"
 
 # Compilar e executar demo interativa
@@ -274,9 +325,9 @@ demo-interactive: $(TARGET_DEMO_INTERACTIVE)
 	@echo "$(BLUE)================================$(NC)"
 
 # Compilação da demo interativa
-$(TARGET_DEMO_INTERACTIVE): $(DEMO_INTERACTIVE_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES)
+$(TARGET_DEMO_INTERACTIVE): $(DEMO_INTERACTIVE_FILE) $(SIMULATOR_SOURCES) $(SIMULATOR_UTILS)
 	@echo "$(BLUE)Compilando demonstracao interativa...$(NC)"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_INTERACTIVE) $(DEMO_INTERACTIVE_FILE) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) -pthread $(CAIRO_LIBS)
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_INTERACTIVE) $(DEMO_INTERACTIVE_FILE) $(SIMULATOR_SOURCES) $(SIMULATOR_UTILS) $(SIMULATOR_LIBS)
 	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
 
 # Compilar e executar teste do subsistema de monitoramento
@@ -302,7 +353,7 @@ test-alertas: $(TARGET_TEST_ALERTAS)
 # Compilação do teste de alertas
 $(TARGET_TEST_ALERTAS): $(TEST_ALERTAS_FILE) $(ALERTAS_SOURCES) $(UTILS_SOURCES)
 	@echo "$(GREEN)Compilando teste de alertas...$(NC)"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_TEST_ALERTAS) $(TEST_ALERTAS_FILE) $(ALERTAS_SOURCES) $(UTILS_DIR)/logger.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) $(EMAIL_CONFIG_FLAG) -o $(TARGET_TEST_ALERTAS) $(TEST_ALERTAS_FILE) $(ALERTAS_SOURCES) $(UTILS_DIR)/logger.cpp $(CURL_LIBS)
 	@echo "$(GREEN)✓ Compilação concluída!$(NC)"
 
 # Compilar e executar demonstração da Fachada
@@ -313,9 +364,9 @@ demo-fachada: $(TARGET_DEMO_FACHADA)
 	@echo "$(BLUE)================================$(NC)"
 
 # Compilação da demonstração da Fachada (inclui todos os subsistemas)
-$(TARGET_DEMO_FACHADA): $(DEMO_FACHADA_FILE) $(CORE_SOURCES) $(USUARIO_DB_SOURCES) $(MONITORAMENTO_SOURCES) $(ALERTAS_SOURCES) $(SIMULATOR_SOURCES) $(UTILS_SOURCES)
+$(TARGET_DEMO_FACHADA): $(DEMO_FACHADA_FILE) $(CORE_SOURCES) $(USUARIO_DB_SOURCES) $(MONITORAMENTO_SOURCES) $(ALERTAS_SOURCES) $(SIMULATOR_SOURCES) $(SIMULATOR_UTILS) $(UTILS_DIR)/logger.cpp
 	@echo "$(BLUE)Compilando demonstração da Fachada...$(NC)"
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) -o $(TARGET_DEMO_FACHADA) $(DEMO_FACHADA_FILE) $(CORE_SOURCES) $(USUARIO_DB_SOURCES) $(MONITORAMENTO_SOURCES) $(ALERTAS_SOURCES) $(SIMULATOR_SOURCES) $(UTILS_SOURCES) -pthread $(CAIRO_LIBS) $(SQLITE_LIBS)
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIR) $(EMAIL_CONFIG_FLAG) -o $(TARGET_DEMO_FACHADA) $(DEMO_FACHADA_FILE) $(CORE_SOURCES) $(USUARIO_DB_SOURCES) $(MONITORAMENTO_SOURCES) $(ALERTAS_SOURCES) $(SIMULATOR_SOURCES) $(SIMULATOR_UTILS) $(UTILS_DIR)/logger.cpp $(SIMULATOR_LIBS) $(SQLITE_LIBS) $(CURL_LIBS)
 	@echo "$(BLUE)✓ Compilação concluída!$(NC)"
 	@echo "$(BLUE)✓ Fachada compilada com sucesso - orquestrando os 3 subsistemas!$(NC)"
 

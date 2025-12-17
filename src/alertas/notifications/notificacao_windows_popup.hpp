@@ -17,8 +17,11 @@ public:
 
 private:
     bool isWindows() const;
+    bool isLinux() const;
     bool enviarWindows(const std::string& mensagem, const std::string& destinatario);
+    bool enviarLinux(const std::string& mensagem, const std::string& destinatario);
     bool enviarFallback(const std::string& mensagem, const std::string& destinatario);
+    bool notifySendDisponivel() const;
 };
 
 #endif // NOTIFICACAO_WINDOWS_POPUP_HPP
