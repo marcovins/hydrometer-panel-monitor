@@ -46,3 +46,6 @@ test_*
 
 # Log files
 *.log
+
+# Email configuration file
+config/email_config.hpp
