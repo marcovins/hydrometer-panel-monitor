@@ -1,286 +1,567 @@
-# Estrutura Modular do Projeto SSMH
+# Sistema de Monitoramento de Hidrômetros (SSMH)
 
-# Codificação dos subsistemas:
+## 🎯 Visão Geral
 
-## Progresso do Projeto
-**66.7% Concluído (2/3)**
+O SSMH é um sistema modular completo para monitoramento de consumo de água através de hidrômetros digitais. O sistema integra três subsistemas principais através de uma **Arquitetura em Camadas** com padrões de projeto bem definidos.
 
+## 📊 Progresso do Projeto
+**✅ 100% Concluído (3/3 Subsistemas)**
 
-🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜ 66.7%
+🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩 100%
 
-## Padrões de Projeto Utilizados
+### Status dos Módulos
+- ✅ **Subsistema de Usuários** - Completo com persistência SQLite e undo/redo
+- ✅ **Subsistema de Monitoramento** - Completo com agregação de consumo e OCR
+- ✅ **Subsistema de Alertas** - Completo com múltiplas estratégias e notificações
+- ✅ **Fachada Central** - Integração completa dos três subsistemas
 
-| Padrão | Localização | Propósito |
-|--------|-------------|-----------|
-| **Facade** | [src/core/fachada_ssmh.hpp](src/core/fachada_ssmh.hpp) | Ponto único de entrada para o sistema |
-| **Strategy** | [src/usuarios/storage/](src/usuarios/storage/) | Persistência (SQLite/Memória) |
-| **Strategy** | [src/alertas/strategies/](src/alertas/strategies/) | Regras de análise de consumo |
-| **Strategy** | [src/alertas/notifications/](src/alertas/notifications/) | Canais de notificação |
-| **Command** | [src/usuarios/commands/](src/usuarios/commands/) | CRUD com undo/redo |
-| **Observer** | [src/alertas/observers/](src/alertas/observers/) | Notificação de alertas |
-| **Composite** | [src/monitoramento/composite/](src/monitoramento/composite/) | Agregação de consumo |
-| **Adapter** | [src/monitoramento/adapter/](src/monitoramento/adapter/) | OCR de hidrômetros |
-| **Factory** | [src/usuarios/services/](src/usuarios/services/) + [src/alertas/services/](src/alertas/services/) | Criação de serviços |
-| **Singleton** | [src/utils/logger.hpp](src/utils/logger.hpp) | Sistema de logging |
+## 🏗️ Arquitetura e Padrões de Projeto
 
-## Visão Geral
+### Padrões Implementados
 
-Este diretório contém todo o código-fonte do Sistema de Monitoramento de Hidrômetros (SSMH), organizado em uma **estrutura modular** que facilita manutenção, testes e escalabilidade.
+| Padrão | Localização | Propósito | Comportamento |
+|--------|-------------|-----------|---------------|
+| **Facade** | [src/core/fachada_ssmh.hpp](src/core/fachada_ssmh.hpp) | Ponto único de entrada | Orquestra os 3 subsistemas, simplificando interface complexa |
+| **Strategy** | [src/usuarios/storage/](src/usuarios/storage/) | Persistência intercambiável | Troca transparente entre SQLite e Memória |
+| **Strategy** | [src/alertas/strategies/](src/alertas/strategies/) | Análise de consumo | 3 algoritmos: Limite Diário, Média Móvel, Vazamento |
+| **Strategy** | [src/alertas/notifications/](src/alertas/notifications/) | Canais de notificação | Console, Email (OAuth2) e Windows Popup |
+| **Command** | [src/usuarios/commands/](src/usuarios/commands/) | CRUD com histórico | Undo/Redo completo para operações de usuário |
+| **Observer** | [src/alertas/observers/](src/alertas/observers/) | Notificação assíncrona | 3 observers: Painel, Logger e Notificação |
+| **Composite** | [src/monitoramento/composite/](src/monitoramento/composite/) | Agregação hierárquica | Calcula consumo individual ou agregado |
+| **Adapter** | [src/monitoramento/adapter/](src/monitoramento/adapter/) | Integração OCR | Adapta bibliotecas externas ao sistema |
+| **Factory** | [src/usuarios/services/](src/usuarios/services/) + [src/alertas/services/](src/alertas/services/) | Criação simplificada | Instancia serviços com configurações padrão |
+| **Singleton** | [src/utils/logger.hpp](src/utils/logger.hpp) | Log centralizado | Instância única global acessível por todos |
 
-## Estrutura de Diretórios
+### Princípios SOLID Aplicados
+
+✅ **Single Responsibility**: Cada classe tem responsabilidade única e coesa  
+✅ **Open/Closed**: Extensível via Strategy/Command sem modificar código existente  
+✅ **Liskov Substitution**: Todas as estratégias são intercambiáveis  
+✅ **Interface Segregation**: Interfaces pequenas e específicas (OCR, Storage, etc)  
+✅ **Dependency Inversion**: Dependências via abstrações (interfaces)
+
+## 📁 Estrutura Modular
+
+O projeto segue **Clean Architecture** com camadas bem definidas:
 
 ```
 src/
-├── simulator/          # Módulo do Simulador de Hidrômetro
-│   ├── simulator.hpp/cpp    - Orquestrador da simulação
-│   ├── hidrometer.hpp/cpp   - Lógica do hidrômetro
-│   └── pipe.hpp/cpp         - Sistema de tubulação
+├── core/               # 🎯 Camada de Integração
+│   └── fachada_ssmh.hpp/cpp     - Facade que orquestra os subsistemas
 │
-├── usuarios/           # Módulo de Gerenciamento de Usuários
-│   ├── domain/              - Entidades de Domínio
-│   │   ├── usuario.hpp/cpp      - Entidade Usuario
-│   │   └── (Fatura incluída)    - Entidade Fatura
-│   │
-│   ├── storage/             - Camada de Persistência (Strategy)
-│   │   ├── armazenamento_strategy.hpp     - Interface Strategy
-│   │   ├── armazenamento_volatil.hpp/cpp  - Implementação em memória
-│   │   └── armazenamento_sqlite.hpp/cpp   - Implementação SQLite
-│   │
-│   ├── commands/            - Padrão Command
-│   │   ├── user_command.hpp               - Interface Command
-│   │   ├── user_commands.hpp/cpp          - Comandos concretos
-│   │   └── command_invoker.hpp/cpp        - Invoker (undo/redo)
-│   │
-│   └── services/            - Lógica de Negócio
-│       ├── usuario_service.hpp/cpp        - Serviço principal
-│       └── usuario_service_factory.hpp    - Factory para criação
+├── usuarios/           # 👤 Subsistema de Usuários
+│   ├── domain/              - Entidades (Usuario, Fatura, TipoPerfil)
+│   ├── storage/             - Persistência (Strategy: SQLite/Memória)
+│   │   ├── armazenamento_strategy.hpp
+│   │   ├── armazenamento_sqlite.hpp/cpp
+│   │   └── armazenamento_volatil.hpp/cpp
+│   ├── commands/            - Padrão Command (undo/redo)
+│   │   ├── user_command.hpp
+│   │   ├── user_commands.hpp/cpp
+│   │   └── command_invoker.hpp/cpp
+│   └── services/            - Lógica de negócio + Factory
+│       ├── usuario_service.hpp/cpp
+│       └── usuario_service_factory.hpp
 │
-├── utils/              # Utilitários Compartilhados
-│   ├── logger.hpp/cpp       - Sistema de logging (Singleton)
-│   └── image.hpp/cpp        - Processamento de imagens
+├── monitoramento/      # 📊 Subsistema de Monitoramento
+│   ├── domain/              - Entidade Leitura
+│   ├── composite/           - Agregação de consumo
+│   │   ├── consumo_monitoravel.hpp         (Component)
+│   │   ├── consumo_hidrometro.hpp/cpp      (Leaf)
+│   │   └── consumo_usuario.hpp/cpp         (Composite)
+│   ├── adapter/             - Integração OCR
+│   │   ├── processador_ocr.hpp             (Target)
+│   │   └── adaptador_ocr.hpp/cpp           (Adapter)
+│   ├── storage/             - Persistência de leituras (DAO)
+│   └── services/            - Coordenação + Factory
 │
-└── core/               # (Futuro) Componentes centrais compartilhados
+├── alertas/            # 🚨 Subsistema de Alertas
+│   ├── domain/              - Entidades (RegraAlerta, AlertaAtivo)
+│   ├── strategies/          - Análise de consumo (Strategy)
+│   │   ├── estrategia_analise_consumo.hpp
+│   │   ├── limite_diario_strategy.hpp/cpp
+│   │   ├── media_movel_strategy.hpp/cpp
+│   │   └── deteccao_vazamento_strategy.hpp/cpp
+│   ├── notifications/       - Canais de notificação (Strategy)
+│   │   ├── notificacao_strategy.hpp
+│   │   ├── notificacao_console_log.hpp/cpp
+│   │   ├── notificacao_email.hpp/cpp
+│   │   └── notificacao_windows_popup.hpp/cpp
+│   ├── observers/           - Padrão Observer
+│   │   ├── alert_observer.hpp
+│   │   ├── painel_observer.hpp/cpp
+│   │   ├── logger_observer.hpp/cpp
+│   │   └── notificacao_observer.hpp/cpp
+│   └── services/            - Coordenação + Factory
+│       ├── alerta_service.hpp/cpp
+│       └── alerta_service_factory.hpp/cpp
+│
+└── utils/              # 🔧 Utilitários Compartilhados
+    ├── logger.hpp/cpp       - Sistema de log (Singleton)
+    └── image.hpp/cpp        - Processamento de imagens
 ```
 
-## Módulos Detalhados
+## 🔄 Comportamento dos Subsistemas
 
-### 1. Módulo Simulator (`simulator/`)
+### 1. Subsistema de Usuários 👤
 
-**Responsabilidade:** Simula o funcionamento de um hidrômetro em tempo real.
+**Responsabilidade:** Gerenciar usuários, contas de água e hidrômetros vinculados.
 
-**Componentes:**
-- `Simulator`: Orquestra a simulação completa
-- `Hidrometer`: Representa o hidrômetro físico
-- `Pipe`: Sistema de tubulação com entrada/saída de água
+**Funcionalidades:**
+- ✅ CRUD completo de usuários
+- ✅ Vinculação de hidrômetros a usuários
+- ✅ Histórico de faturas
+- ✅ Undo/Redo de operações (Command)
+- ✅ Persistência em SQLite ou Memória (Strategy)
 
-**Padrões:** Observer (eventos de mudança de estado)
-
-### 2. Módulo Usuarios (`usuarios/`)
-
-**Responsabilidade:** Gerencia todo o ciclo de vida de usuários e suas contas de água.
-
-#### 2.1. Domain (`usuarios/domain/`)
-Contém as **entidades de domínio** puras, sem lógica de persistência ou apresentação.
-
-- `Usuario`: Representa um usuário do sistema
-- `Fatura`: Representa uma conta de água
-- `TipoPerfil`: Enum para tipos de usuário (ADMIN/LEITOR)
-
-**Princípio:** Domain-Driven Design (DDD)
-
-#### 2.2. Storage (`usuarios/storage/`)
-Implementa a **camada de persistência** usando o padrão Strategy.
-
-- `ArmazenamentoStrategy`: Interface comum
-- `ArmazenamentoVolatil`: Dados em memória (testes)
-- `ArmazenamentoSqlite`: Dados persistentes (produção)
-
-**Padrão:** Strategy + Repository Pattern
-
-**Benefícios:**
-- Troca transparente de estratégia
-- Testes unitários sem banco
-- Fácil adicionar novos backends (MySQL, PostgreSQL, etc.)
-
-#### 2.3. Commands (`usuarios/commands/`)
-Implementa o **padrão Command** para operações com undo/redo.
-
-- `UserCommand`: Interface base
-- `CriarUsuarioCommand`: Criar usuário
-- `AtualizarUsuarioCommand`: Atualizar dados
-- `DeletarUsuarioCommand`: Remover usuário
-- `VincularHidrometroCommand`: Associar hidrômetro
-- `CommandInvoker`: Gerencia execução e histórico
-
-**Padrão:** Command
-
-**Benefícios:**
-- Undo/Redo automático
-- Histórico de operações
-- Fácil adicionar novas operações
-- Logging transparente
-
-#### 2.4. Services (`usuarios/services/`)
-Contém a **lógica de negócio** e coordenação entre camadas.
-
-- `UsuarioService`: Serviço principal (Receiver do Command)
-- `UsuarioServiceFactory`: Simplifica criação com Strategy
-
-**Padrão:** Service Layer + Factory
-
-**Benefícios:**
-- Encapsulamento da lógica de negócio
-- Ponto único de entrada
-- Validações centralizadas
-
-### 3. Módulo Utils (`utils/`)
-
-**Responsabilidade:** Utilitários compartilhados por todo o sistema.
-
-- `Logger`: Sistema de logging global (Singleton)
-- `Image`: Processamento de imagens para OCR
-
-**Padrão:** Singleton (Logger)
-
-## Dependências Entre Módulos
-
+**Fluxo de Operação:**
 ```
-main.cpp
-    ↓
-simulator/ ← utils/logger
-    ↓
-usuarios/services/
-    ↓
-usuarios/commands/
-    ↓
-usuarios/storage/ → usuarios/domain/
+Cliente → Fachada → CommandInvoker → UserCommand → UsuarioService → Storage
+                                                         ↓
+                                                      Logger (Singleton)
 ```
 
-**Regras de Dependência:**
-1. Domain não depende de ninguém (camada mais interna)
-2. Storage só depende de Domain
-3. Services coordena Storage e Commands
-4. Commands usa Services (receptor)
-5. Utils pode ser usado por qualquer módulo
+**Comportamento do Undo/Redo:**
+- Cada operação (criar, atualizar, deletar) é encapsulada em um Command
+- CommandInvoker mantém histórico de comandos executados
+- `undo()` restaura estado anterior através de operação inversa
+- `redo()` reaplica comando desfeito
 
-## Como Adicionar um Novo Módulo
+**Persistência Strategy:**
+- `ArmazenamentoSqlite`: Dados persistentes em banco de dados
+- `ArmazenamentoVolatil`: Dados em memória (testes/desenvolvimento)
+- Troca transparente através de Factory
 
-### Exemplo: Módulo de Alertas
+---
 
-1. **Criar estrutura:**
+### 2. Subsistema de Monitoramento 📊
+
+**Responsabilidade:** Coletar e agregar dados de consumo de água.
+
+**Funcionalidades:**
+- ✅ Registro de leituras manuais
+- ✅ Integração com OCR (Adapter)
+- ✅ Agregação de consumo por hidrômetro ou usuário (Composite)
+- ✅ Cálculo de consumo por período
+- ✅ Persistência de leituras em DAO
+
+**Fluxo de Operação:**
+```
+Cliente → Fachada → MonitoramentoService → LeituraDAO (storage)
+                            ↓
+                    ConsumoMonitoravel (Composite)
+                            ↓
+                    ┌──────┴──────┐
+            ConsumoHidrometro   ConsumoUsuario
+              (Leaf)            (Composite)
+```
+
+**Comportamento do Composite:**
+- `ConsumoHidrometro` (Leaf): Calcula consumo de um hidrômetro específico
+- `ConsumoUsuario` (Composite): Agrega múltiplos hidrômetros de um usuário
+- Ambos implementam interface `ConsumoMonitoravel`
+- Permite cálculo recursivo de consumo total
+
+**Adaptador OCR:**
+- Abstrai biblioteca externa de OCR (Tesseract, OpenCV, etc)
+- Interface `ProcessadorOCR` define contrato
+- `AdaptadorOCR` converte chamadas para biblioteca específica
+
+---
+
+### 3. Subsistema de Alertas 🚨
+
+**Responsabilidade:** Monitorar consumo e notificar anomalias automaticamente.
+
+**Funcionalidades:**
+- ✅ Configuração de regras de alerta por usuário
+- ✅ 3 estratégias de análise: Limite Diário, Média Móvel, Vazamento
+- ✅ 3 canais de notificação: Console, Email (OAuth2), Windows Popup
+- ✅ Notificação assíncrona via Observer
+- ✅ Histórico de alertas disparados
+
+**Fluxo de Operação:**
+```
+Cliente → Fachada → AlertaService → Verifica Regras
+                                          ↓
+                            EstrategiaAnaliseConsumo (Strategy)
+                                          ↓
+                            ┌─────────────┼─────────────┐
+                    LimiteDiario   MediaMovel   Vazamento
+                                          ↓
+                            Dispara Alerta (Observer)
+                                          ↓
+                            ┌─────────────┼─────────────┐
+                    PainelObserver  LoggerObserver  NotificacaoObserver
+                                                            ↓
+                                          NotificacaoStrategy (Strategy)
+                                                            ↓
+                                          ┌─────────────────┼────────────┐
+                                    Console         Email         Popup
+```
+
+**Comportamento das Estratégias de Análise:**
+
+1. **Limite Diário** (`limite_diario_strategy`):
+   - Compara consumo atual com limite fixo configurado
+   - Dispara alerta se `consumo > limite`
+   - Uso: Controle de orçamento mensal
+
+2. **Média Móvel** (`media_movel_strategy`):
+   - Calcula média dos últimos N dias
+   - Dispara se `consumo > média * fator` (ex: 1.5x)
+   - Uso: Detectar mudanças de padrão
+
+3. **Detecção de Vazamento** (`deteccao_vazamento_strategy`):
+   - Monitora fluxo constante fora de horário esperado
+   - Dispara se detectar consumo contínuo anormal
+   - Uso: Identificar vazamentos ocultos
+
+**Comportamento dos Observers:**
+- `PainelObserver`: Atualiza UI em tempo real
+- `LoggerObserver`: Registra evento no log
+- `NotificacaoObserver`: Envia notificação via canal configurado
+
+**Canais de Notificação (Strategy):**
+- `NotificacaoConsoleLog`: Imprime no console
+- `NotificacaoEmail`: Envia via Gmail com OAuth2
+- `NotificacaoWindowsPopup`: Exibe notificação nativa do Windows
+
+---
+
+### 4. Fachada Central (Core) 🎯
+
+**Responsabilidade:** Orquestrar comunicação entre os três subsistemas.
+
+**Comportamento:**
+```cpp
+// Exemplo de fluxo coordenado pela Fachada:
+
+// 1. Criar usuário
+fachada.executarComandoUsuario(
+    std::make_unique<CriarUsuarioCommand>(service, usuario)
+);
+
+// 2. Registrar leitura de consumo
+fachada.registrarLeituraManual("SHA001", 150.5);
+
+// 3. Configurar alerta
+fachada.salvarRegra(usuarioId, "LIMITE_DIARIO", "100");
+
+// 4. Sistema verifica automaticamente e notifica se necessário
+fachada.verificarRegras(usuarioId, 150.5);  // Dispara alerta!
+```
+
+**Operações Orquestradas:**
+1. Criar usuário → Vincular hidrômetro → Configurar alerta
+2. Registrar leitura → Calcular consumo → Verificar regras → Notificar
+3. Undo de operação → Sincronizar estado entre subsistemas
+
+## 🚀 Como Usar o Sistema
+
+### Compilação
+
+```bash
+# Compilar com configuração padrão
+make
+
+# Compilar em modo debug
+make debug
+
+# Limpar e recompilar
+make clean && make
+```
+
+### Exemplos de Uso
+
+#### 1. Demo Completo com Fachada
+```bash
+make demo-fachada
+./demo_fachada
+```
+
+#### 2. Demo Interativo
+```bash
+make demo-interactive
+./demo_interactive
+```
+
+#### 3. Testes Unitários
+```bash
+# Testar subsistema de usuários
+make test-usuarios
+
+# Testar persistência SQLite
+make test-usuarios-db
+
+# Testar subsistema de alertas
+make test-alertas
+
+# Testar subsistema de monitoramento
+make test-monitoramento
+
+# Testar notificações Windows
+make test-popup
+```
+
+### Código de Exemplo
+
+```cpp
+#include "src/core/fachada_ssmh.hpp"
+#include "src/usuarios/services/usuario_service_factory.hpp"
+#include "src/monitoramento/services/monitoramento_service_factory.hpp"
+#include "src/alertas/services/alerta_service_factory.hpp"
+
+int main() {
+    // 1. Criar serviços
+    auto usuarioSvc = UsuarioServiceFactory::criarComSqlite();
+    auto monitoramentoSvc = MonitoramentoServiceFactory::criar();
+    auto alertaSvc = AlertaServiceFactory::criarPadrao();
+    
+    // 2. Instanciar Fachada
+    FachadaSSMH fachada(usuarioSvc, monitoramentoSvc, alertaSvc);
+    
+    // 3. Criar usuário
+    Usuario usuario(1, "João Silva", "joao@email.com", "12345678900", 
+                    TipoPerfil::LEITOR);
+    auto cmd = std::make_unique<CriarUsuarioCommand>(usuarioSvc, usuario);
+    fachada.executarComandoUsuario(std::move(cmd));
+    
+    // 4. Vincular hidrômetro
+    fachada.vincularHidrometroUsuario(1, "SHA001");
+    
+    // 5. Configurar alerta
+    fachada.salvarRegra(1, "LIMITE_DIARIO", "100");
+    
+    // 6. Registrar leitura
+    fachada.registrarLeituraManual("SHA001", 150.5);
+    
+    // 7. Verificar alertas (automático)
+    fachada.verificarRegras(1, 150.5);  // Dispara alerta!
+    
+    return 0;
+}
+```
+
+## 📋 Dependências e Requisitos
+
+### Bibliotecas Necessárias
+
+| Biblioteca | Versão | Uso |
+|------------|--------|-----|
+| **SQLite3** | 3.x | Persistência de dados |
+| **Cairo** | 1.16+ | Renderização gráfica (opcional) |
+| **libcurl** | 7.x | Envio de emails OAuth2 |
+| **pkg-config** | - | Configuração de bibliotecas |
+
+### Instalação no Windows (MSYS2)
+
+```bash
+# Atualizar pacotes
+pacman -Syu
+
+# Instalar dependências
+pacman -S mingw-w64-x86_64-gcc
+pacman -S mingw-w64-x86_64-sqlite3
+pacman -S mingw-w64-x86_64-cairo
+pacman -S mingw-w64-x86_64-curl
+pacman -S pkg-config
+```
+
+### Configuração de Email (Opcional)
+
+Para habilitar notificações por email:
+
+1. Copie o template:
    ```bash
-   mkdir -p src/alertas/{domain,services,strategies}
+   cp config/email_config_example.hpp config/email_config.hpp
    ```
 
-2. **Domain:** Entidades puras
-   ```cpp
-   // src/alertas/domain/alerta.hpp
-   class Alerta {
-       // Entidade de domínio
-   };
-   ```
+2. Configure suas credenciais OAuth2 (Gmail):
+   - Siga o guia: [docs/GMAIL_OAUTH2_QUICKSTART.md](docs/GMAIL_OAUTH2_QUICKSTART.md)
 
-3. **Strategies:** Implementações intercambiáveis
-   ```cpp
-   // src/alertas/strategies/notificacao_strategy.hpp
-   class NotificacaoStrategy {
-       virtual void notificar() = 0;
-   };
-   ```
-
-4. **Services:** Lógica de negócio
-   ```cpp
-   // src/alertas/services/alerta_service.hpp
-   class AlertaService {
-       // Coordena domain e strategies
-   };
-   ```
-
-5. **Atualizar Makefile:**
+3. Descomente no Makefile:
    ```makefile
-   ALERTAS_SOURCES = $(SRC_DIR)/alertas/domain/alerta.cpp \
-                     $(SRC_DIR)/alertas/services/alerta_service.cpp
+   EMAIL_CONFIG_FLAG = -DEMAIL_CONFIG_EXISTS -I./config
    ```
 
-## Princípios Seguidos
+---
 
-### SOLID
+## 🔧 Configuração de Simuladores
 
-- **S**ingle Responsibility: Cada classe tem uma responsabilidade única
-- **O**pen/Closed: Extensível via Strategy, Command, etc.
-- **L**iskov Substitution: Estratégias são intercambiáveis
-- **I**nterface Segregation: Interfaces pequenas e coesas
-- **D**ependency Inversion: Depende de abstrações (Strategy, Command)
+**Novo!** O projeto suporta **dois simuladores diferentes**:
 
-### Clean Architecture
-
-- **Camadas bem definidas:** Domain → Storage → Services → Commands
-- **Independência de frameworks:** Core não depende de SQLite
-- **Testável:** Cada camada pode ser testada isoladamente
-- **Independente de UI:** Lógica separada da apresentação
-
-### DRY (Don't Repeat Yourself)
-
-- Utils compartilhados (Logger, Image)
-- Factory para criação padronizada
-- Strategy para evitar código duplicado
-
-## Compilação Modular
-
-O Makefile foi organizado para compilar módulos independentemente:
-
-```makefile
-# Apenas Simulator
-SIMULATOR_SOURCES = $(SIMULATOR_DIR)/simulator.cpp ...
-
-# Apenas Usuarios
-USUARIO_SOURCES = $(USUARIOS_DIR)/domain/usuario.cpp ...
-
-# Combinar conforme necessário
-ALL_SOURCES = $(SIMULATOR_SOURCES) $(USUARIO_SOURCES) ...
-```
-
-### 🔧 Configuração de Simuladores
-
-**Novo!** O projeto agora suporta dois simuladores diferentes:
 1. **Hydrometer Project Simulator** - Completo com multi-threading e Cairo
 2. **Simulador SHA** - Com Facade, CLI e OpenCV
 
-Para trocar entre eles, edite o arquivo `simulator_config.mk`:
+### Trocar de Simulador
+
+Edite o arquivo `simulator_config.mk`:
+
 ```makefile
+# Opção 1: Simulador original
 SIMULATOR_TYPE = hydrometer-project-simulator
-# ou
+
+# Opção 2: Simulador SHA
 SIMULATOR_TYPE = simulador-hidrometro
 ```
 
-**📖 Documentação completa:** Veja [SIMULATORS_CONFIG.md](SIMULATORS_CONFIG.md)
+**📖 Documentação completa:** [SIMULATORS_CONFIG.md](SIMULATORS_CONFIG.md)
 
-## Testes
+---
 
-Cada módulo pode ser testado independentemente:
+## 📊 Estrutura de Dados
 
-```bash
-make test-usuarios      # Testa módulo de usuários
-make test-sqlite        # Testa persistência SQLite
-make exemplo-factory    # Testa Factory
+### Banco de Dados SQLite
+
+**Tabela: usuarios**
+```sql
+CREATE TABLE usuarios (
+    id INTEGER PRIMARY KEY,
+    nome TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    cpf TEXT UNIQUE NOT NULL,
+    tipo_perfil INTEGER NOT NULL,
+    hidrometro_id TEXT
+);
 ```
 
-## Padrões de Nomenclatura
+**Tabela: faturas**
+```sql
+CREATE TABLE faturas (
+    id INTEGER PRIMARY KEY,
+    usuario_id INTEGER NOT NULL,
+    mes INTEGER NOT NULL,
+    ano INTEGER NOT NULL,
+    consumo REAL NOT NULL,
+    valor REAL NOT NULL,
+    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+);
+```
+
+**Tabela: regras_alertas**
+```sql
+CREATE TABLE regras_alertas (
+    id INTEGER PRIMARY KEY,
+    usuario_id INTEGER NOT NULL,
+    tipo_estrategia TEXT NOT NULL,
+    parametros TEXT NOT NULL,
+    ativa BOOLEAN DEFAULT 1,
+    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+);
+```
+
+**Tabela: alertas_ativos**
+```sql
+CREATE TABLE alertas_ativos (
+    id INTEGER PRIMARY KEY,
+    regra_id INTEGER NOT NULL,
+    timestamp TEXT NOT NULL,
+    mensagem TEXT NOT NULL,
+    FOREIGN KEY(regra_id) REFERENCES regras_alertas(id)
+);
+```
+
+---
+
+## 🧪 Testes Disponíveis
+
+| Teste | Comando | Descrição |
+|-------|---------|-----------|
+| **Usuários (Memória)** | `make test-usuarios` | Testa CRUD e undo/redo |
+| **Usuários (SQLite)** | `make test-usuarios-db` | Testa persistência |
+| **Alertas** | `make test-alertas` | Testa todas estratégias |
+| **Monitoramento** | `make test-monitoramento` | Testa composite e OCR |
+| **Popup Windows** | `make test-popup` | Testa notificação nativa |
+| **Multi-threading** | `make test-multithread` | Testa concorrência |
+| **Factory** | `make exemplo-factory` | Testa criação de serviços |
+
+---
+
+## 📖 Documentação Adicional
+
+### Guias de Implementação
+- [Subsistema de Usuários](docs/SUBSISTEMA_USUARIOS.md)
+- [Subsistema de Monitoramento](docs/SUBSISTEMA_MONITORAMENTO.md)
+- [Subsistema de Alertas Completo](docs/SUBSISTEMA_ALERTAS_COMPLETO.md)
+- [Integração com Banco de Dados](docs/INTEGRACAO_BANCO_DADOS.md)
+
+### Diagramas
+- [Estrutura Modular](docs/diagrams/estrutura_modular.puml)
+- [Facade SSMH](docs/diagrams/diagram_facadeSSMH.puml)
+- [Sistema de Alertas](docs/diagrams/alert_diagram.puml)
+- [Sistema de Usuários](docs/diagrams/users_diagram.puml)
+- [OCR Adapter](docs/diagrams/ocr_diagram.puml)
+
+### Configuração
+- [Setup OAuth2 Gmail](docs/GMAIL_OAUTH2_QUICKSTART.md)
+- [Configuração de Simuladores](SIMULATORS_CONFIG.md)
+- [Multi-Simulador](IMPLEMENTACAO_MULTI_SIMULADOR.md)
+
+## 🎓 Conceitos de Engenharia de Software Aplicados
+
+### Princípios SOLID ✅
+- **Single Responsibility**: Cada classe com responsabilidade única
+- **Open/Closed**: Extensível sem modificar código existente
+- **Liskov Substitution**: Estratégias totalmente intercambiáveis
+- **Interface Segregation**: Interfaces coesas e específicas
+- **Dependency Inversion**: Dependências via abstrações
+
+### Clean Architecture ✅
+- Camadas bem definidas (Domain → Storage → Services)
+- Independência de frameworks
+- Testabilidade em todos os níveis
+- Separação clara de responsabilidades
+
+### Design Patterns ✅
+- **10 padrões** implementados e integrados
+- Solução elegante para problemas recorrentes
+- Código reutilizável e manutenível
+
+---
+
+## 📝 Convenções de Código
 
 ### Arquivos
 - Headers: `.hpp`
 - Implementações: `.cpp`
-- Nomes em snake_case: `usuario_service.hpp`
+- Nomes: `snake_case` (ex: `usuario_service.hpp`)
 
-### Classes
-- PascalCase: `UsuarioService`, `ArmazenamentoStrategy`
-- Interfaces terminam em sufixo descritivo: `Strategy`, `Command`
+### Classes e Interfaces
+- Classes: `PascalCase` (ex: `UsuarioService`)
+- Interfaces: Sufixo descritivo (ex: `Strategy`, `Command`, `Observer`)
+- Abstratas: Prefixo descritivo quando necessário
 
 ### Diretórios
-- Lowercase: `domain/`, `storage/`, `commands/`
-- Nome do módulo principal: `usuarios/`, `simulator/`
+- Lowercase: `domain/`, `storage/`, `services/`
+- Agrupados por responsabilidade funcional
 
 ---
 
-**Última atualização:** 07/12/2025  
-**Versão:** 2.0 - Estrutura Modular
+## 🏆 Destaques do Projeto
+
+✨ **Arquitetura Modular**: 3 subsistemas independentes e coesos  
+✨ **10 Padrões de Projeto**: Implementados e integrados elegantemente  
+✨ **SOLID Completo**: Todos os 5 princípios aplicados rigorosamente  
+✨ **Clean Architecture**: Camadas bem definidas e testáveis  
+✨ **Persistência Flexível**: SQLite ou Memória via Strategy  
+✨ **Undo/Redo**: Sistema completo via Command Pattern  
+✨ **Notificações Múltiplas**: Console, Email, Windows Popup  
+✨ **Alertas Inteligentes**: 3 estratégias de análise de consumo  
+✨ **Agregação de Dados**: Composite para cálculos hierárquicos  
+✨ **Logging Centralizado**: Singleton para rastreamento global  
+
+---
+
+## 👨‍💻 Informações do Projeto
+
+**Autor:** Marcos Belo  
+**Última atualização:** 17/12/2025  
+**Versão:** 3.0 - Sistema Completo e Integrado  
+**Status:** ✅ 100% Concluído  
+
+---
+
+## 📄 Licença
+
+Este projeto é parte de um trabalho acadêmico sobre Padrões de Projeto e Engenharia de Software.
